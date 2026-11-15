@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  version:
+    name: Version and repository checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate version.json against the workspace
+        run: bash scripts/verify-version.sh
+
+      - name: Check required documentation and licensing
+        run: |
+          set -euo pipefail
+          for file in README.md LICENSE docs/ARCHITECTURE.md docs/DATABASE_SCHEMA.md \
+                      docs/DATA_MODELS.md docs/BUILD.md version.json; do
+            [[ -f "$file" ]] || { echo "missing $file"; exit 1; }
+          done
+          for crate in crates/*/; do
+            [[ -f "${crate}README.md" ]] || { echo "missing ${crate}README.md"; exit 1; }
+            [[ -f "${crate}LICENSE" ]] || { echo "missing ${crate}LICENSE"; exit 1; }
+          done
+          echo "documentation and licenses present"
+
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  lint:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Install GPUI linking dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test-linux:
+    name: Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install GPUI linking dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev
+      - name: Unit and integration tests
+        run: cargo test --workspace --all-targets
+      - name: CLI smoke test
+        run: |
+          set -euo pipefail
+          cargo run -q -p requestlab-cli -- --version
+          cargo run -q -p requestlab-cli -- --help | head -n 5
+
+  test-windows:
+    name: Tests and binaries (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build all crates
+        run: cargo build --workspace --all-targets
+      - name: Test non-GUI crates
+        run: |
+          cargo test -p requestlab-models -p requestlab-http -p requestlab-storage `
+                     -p requestlab-collections -p requestlab-environments `
+                     -p requestlab-core -p requestlab-cli
+      - name: CLI smoke test
+        run: |
+          cargo run -q -p requestlab-cli -- --version
+          cargo run -q -p requestlab-cli -- config get

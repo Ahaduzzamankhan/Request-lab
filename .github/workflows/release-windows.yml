@@ -1,0 +1,132 @@
+name: Release (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and verify without creating a tag or release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  release:
+    name: Build and publish Windows release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Read and validate version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/verify-version.sh
+          version="$(python -c "import json;print(json.load(open('version.json'))['version'])")"
+          channel="$(python -c "import json;print(json.load(open('version.json'))['channel'])")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the version is not already released
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          if git ls-remote --tags origin "refs/tags/$tag" | grep -q "$tag"; then
+            echo "::error::tag $tag already exists - bump version.json before releasing"
+            exit 1
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::release $tag already exists - bump version.json before releasing"
+            exit 1
+          fi
+          echo "version $tag is unreleased"
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p requestlab-models -p requestlab-http -p requestlab-storage \
+                     -p requestlab-collections -p requestlab-environments \
+                     -p requestlab-core -p requestlab-cli
+          cargo build --workspace --all-targets
+
+      - name: Build release binaries
+        run: cargo build --release -p requestlab-app -p requestlab-cli
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp target/release/requestlab.exe dist/
+          cp target/release/requestlab-cli.exe dist/
+          cp README.md LICENSE version.json dist/
+          cd dist
+          sha256sum requestlab.exe requestlab-cli.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: requestlab-windows-${{ steps.version.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Create tag
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == false
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "RequestLab ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' || inputs.dry_run == false
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: RequestLab ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: ${{ steps.version.outputs.channel != 'stable' }}
+          generate_release_notes: true
+          files: |
+            dist/requestlab.exe
+            dist/requestlab-cli.exe
+            dist/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+          body: |
+            RequestLab ${{ steps.version.outputs.version }} (${{ steps.version.outputs.channel }})
+
+            Windows x64 release.
+
+            - `requestlab.exe` - desktop application
+            - `requestlab-cli.exe` - command line interface
+            - `SHA256SUMS.txt` - checksums
+
+            Verify with: `certutil -hashfile requestlab.exe SHA256`
