@@ -1,0 +1,15 @@
+[package]
+name = "requestlab-collections"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+requestlab-models = { workspace = true }
+requestlab-storage = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

@@ -1,0 +1,68 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/requestlab-models",
+    "crates/requestlab-http",
+    "crates/requestlab-storage",
+    "crates/requestlab-collections",
+    "crates/requestlab-environments",
+    "crates/requestlab-core",
+    "crates/requestlab-ui",
+    "crates/requestlab-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["RequestLab"]
+repository = "https://github.com/Ahaduzzamankhan/report-lab"
+
+[workspace.dependencies]
+# Shared runtime / serialization
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+uuid = { version = "1.16.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.41", features = ["serde", "clock"] }
+thiserror = "2.0.12"
+anyhow = "1.0.98"
+url = "2.5.4"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+# Async runtime & networking
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "fs"] }
+reqwest = { version = "0.12.15", default-features = false, features = ["rustls-tls", "json", "charset", "http2", "stream"] }
+
+# Persistence
+sqlx = { version = "0.8.5", default-features = false, features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
+
+# Desktop UI (pinned; APIs verified against the 0.2.2 source in the local cargo registry)
+gpui = "0.2.2"
+
+# Internal crates
+requestlab-models = { path = "crates/requestlab-models" }
+requestlab-http = { path = "crates/requestlab-http" }
+requestlab-storage = { path = "crates/requestlab-storage" }
+requestlab-collections = { path = "crates/requestlab-collections" }
+requestlab-environments = { path = "crates/requestlab-environments" }
+requestlab-core = { path = "crates/requestlab-core" }
+requestlab-ui = { path = "crates/requestlab-ui" }
+
+# Development-only workaround: xattr 0.2.3 (pulled in by gpui's asset loader on
+# unix targets) references `libc::ENOATTR`, which does not exist on Linux. The
+# vendored copy uses `ENODATA` there. Windows builds never compile this crate.
+[patch.crates-io]
+xattr = { path = "vendor/xattr" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2

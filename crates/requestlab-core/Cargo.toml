@@ -1,0 +1,19 @@
+[package]
+name = "requestlab-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+requestlab-models = { workspace = true }
+requestlab-http = { workspace = true }
+requestlab-storage = { workspace = true }
+requestlab-collections = { workspace = true }
+requestlab-environments = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }

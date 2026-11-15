@@ -1,0 +1,20 @@
+[package]
+name = "requestlab-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "requestlab"
+path = "src/main.rs"
+
+[dependencies]
+gpui = { workspace = true }
+requestlab-ui = { workspace = true }
+requestlab-core = { workspace = true }
+requestlab-models = { workspace = true }
+requestlab-storage = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }

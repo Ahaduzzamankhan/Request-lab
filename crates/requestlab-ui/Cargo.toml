@@ -1,0 +1,15 @@
+[package]
+name = "requestlab-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+requestlab-core = { workspace = true }
+requestlab-models = { workspace = true }
+gpui = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+unicode-segmentation = "1.12.0"
