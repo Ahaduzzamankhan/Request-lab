@@ -368,3 +368,69 @@ async fn environment_variables_are_resolved_before_sending() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[tokio::test]
+async fn environment_variables_can_be_set_unset_and_are_redacted() {
+    let server = TestServer::spawn(200, "ok");
+    let dir = temp_dir();
+
+    invoke(&dir, &["environments", "create", "Local"])
+        .await
+        .unwrap();
+    let host = format!("127.0.0.1:{}", server.port);
+    let assignment = format!("base={host}");
+
+    let set = invoke(&dir, &["environments", "set", "Local", &assignment])
+        .await
+        .unwrap();
+    assert!(set.text.contains("base ="), "{}", set.text);
+
+    let secret = invoke(
+        &dir,
+        &["environments", "set", "Local", "token=abc", "--secret"],
+    )
+    .await
+    .unwrap();
+    assert!(secret.text.contains("********"), "{}", secret.text);
+
+    let listed = invoke(&dir, &["--json", "environments", "variables", "Local"])
+        .await
+        .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&listed.text).unwrap();
+    let variables = parsed["variables"].as_array().unwrap();
+    assert_eq!(variables.len(), 2);
+    assert!(variables.iter().any(|value| value["value"] == "********"));
+
+    // The CLI-set variable is used for real resolution.
+    let sent = invoke(&dir, &["send", "http://{{base}}/cli", "--env", "Local"])
+        .await
+        .unwrap();
+    assert_eq!(sent.exit_code, 0);
+    assert!(
+        server.last_request().starts_with("GET /cli"),
+        "{}",
+        server.last_request()
+    );
+
+    // Re-setting a key updates it instead of duplicating it.
+    invoke(&dir, &["environments", "set", "Local", "base=127.0.0.1:1"])
+        .await
+        .unwrap();
+    let listed = invoke(&dir, &["--json", "environments", "variables", "Local"])
+        .await
+        .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&listed.text).unwrap();
+    assert_eq!(parsed["variables"].as_array().unwrap().len(), 2);
+
+    let removed = invoke(&dir, &["environments", "unset", "Local", "token"])
+        .await
+        .unwrap();
+    assert!(removed.text.contains("Removed token"), "{}", removed.text);
+
+    let missing = invoke(&dir, &["environments", "unset", "Local", "token"])
+        .await
+        .unwrap_err();
+    assert_eq!(missing.exit_code, 2);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -14,7 +14,7 @@ requestlab-cli [--json] [--data-dir PATH] <command> [options]
 send <url>                    Send an HTTP request
 collections list|create|delete
 history list|clear
-environments list|create|use|variables
+environments list|create|use|variables|set|unset
 config get|set
 ```
 
@@ -41,6 +41,8 @@ requestlab-cli collections list
 requestlab-cli history list --status 5xx --limit 10
 requestlab-cli environments create Staging
 requestlab-cli environments use Staging
+requestlab-cli environments set Staging API_TOKEN=secret --secret
+requestlab-cli environments unset Staging API_TOKEN
 requestlab-cli config set timeout 45
 ```
 

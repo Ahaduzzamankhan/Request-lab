@@ -61,6 +61,7 @@ requestlab-cli send https://api.example.com/users -X POST \
 requestlab-cli --json send https://api.example.com/health | jq .status
 requestlab-cli history list --status 5xx --limit 10
 requestlab-cli collections create "Payments"
+requestlab-cli environments set Development API_TOKEN=abc --secret
 requestlab-cli config set timeout 45
 ```
 

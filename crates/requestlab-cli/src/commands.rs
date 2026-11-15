@@ -219,6 +219,72 @@ async fn execute(
                 output::variables_text(environment)
             }))
         }
+        Command::EnvironmentsSet {
+            name,
+            key,
+            value,
+            secret,
+            disabled,
+        } => {
+            let environments = service.environments().list().await.map_err(runtime_error)?;
+            let environment = environments
+                .into_iter()
+                .find(|environment| environment.name.eq_ignore_ascii_case(&name))
+                .ok_or_else(|| CliError::usage(format!("no environment named '{name}'")))?;
+            let mut variables = environment.variables.clone();
+            let mut updated =
+                requestlab_models::EnvironmentVariable::new(key.clone(), value.clone());
+            updated.is_secret = secret;
+            updated.enabled = !disabled;
+            match variables
+                .iter_mut()
+                .find(|variable| variable.key.eq_ignore_ascii_case(&key))
+            {
+                Some(existing) => {
+                    existing.value = value.clone();
+                    existing.is_secret = secret;
+                    existing.enabled = !disabled;
+                }
+                None => variables.push(updated),
+            }
+            service
+                .environments()
+                .save_variables(environment.id, &variables)
+                .await
+                .map_err(runtime_error)?;
+            Ok(CommandOutput::ok(format!(
+                "{} = {}{}{}",
+                key,
+                if secret { "********" } else { value.as_str() },
+                if secret { " (secret)" } else { "" },
+                if disabled { " (disabled)" } else { "" },
+            )))
+        }
+        Command::EnvironmentsUnset { name, key } => {
+            let environments = service.environments().list().await.map_err(runtime_error)?;
+            let environment = environments
+                .into_iter()
+                .find(|environment| environment.name.eq_ignore_ascii_case(&name))
+                .ok_or_else(|| CliError::usage(format!("no environment named '{name}'")))?;
+            let variables: Vec<_> = environment
+                .variables
+                .iter()
+                .filter(|variable| !variable.key.eq_ignore_ascii_case(&key))
+                .cloned()
+                .collect();
+            if variables.len() == environment.variables.len() {
+                return Err(CliError::usage(format!(
+                    "'{key}' is not set in environment '{}'",
+                    environment.name
+                )));
+            }
+            service
+                .environments()
+                .save_variables(environment.id, &variables)
+                .await
+                .map_err(runtime_error)?;
+            Ok(CommandOutput::ok(format!("Removed {key}")))
+        }
         Command::ConfigGet => {
             let settings = service.settings();
             Ok(CommandOutput::ok(if json {

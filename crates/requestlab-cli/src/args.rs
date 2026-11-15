@@ -10,16 +10,40 @@ use requestlab_models::{ApiKeyLocation, HttpMethod, RequestBodyKind};
 pub enum Command {
     Send(SendOptions),
     CollectionsList,
-    CollectionsCreate { name: String },
-    CollectionsDelete { id: String },
+    CollectionsCreate {
+        name: String,
+    },
+    CollectionsDelete {
+        id: String,
+    },
     HistoryList(HistoryQuery),
     HistoryClear,
     EnvironmentsList,
-    EnvironmentsCreate { name: String },
-    EnvironmentsVariables { name: String },
-    EnvironmentsUse { name: String },
+    EnvironmentsCreate {
+        name: String,
+    },
+    EnvironmentsVariables {
+        name: String,
+    },
+    EnvironmentsSet {
+        name: String,
+        key: String,
+        value: String,
+        secret: bool,
+        disabled: bool,
+    },
+    EnvironmentsUnset {
+        name: String,
+        key: String,
+    },
+    EnvironmentsUse {
+        name: String,
+    },
     ConfigGet,
-    ConfigSet { key: ConfigKey, value: String },
+    ConfigSet {
+        key: ConfigKey,
+        value: String,
+    },
     Help,
     Version,
 }
@@ -181,6 +205,8 @@ COMMANDS:
     environments create <name>    Create an environment
     environments use <name|none>  Select the active environment
     environments variables <name> Show an environment's variables
+    environments set <name> <K=V>  Add or update a variable (--secret, --disabled)
+    environments unset <name> <K>  Remove a variable
     config get                    Show stored preferences
     config set <key> <value>      Update timeout, history-limit or theme
 
@@ -295,8 +321,31 @@ fn parse_command(args: &[String]) -> Result<Command, String> {
             Some("variables") => Ok(Command::EnvironmentsVariables {
                 name: require_positional(tail, 1, "environment name")?,
             }),
+            Some("set") => {
+                let name = require_positional(tail, 1, "environment name")?;
+                let pair = require_positional(tail, 2, "KEY=VALUE assignment")?;
+                let assignment = Pair::parse(&pair, '=')?;
+                let secret = tail.iter().any(|flag| flag == "--secret");
+                let disabled = tail.iter().any(|flag| flag == "--disabled");
+                for flag in tail.iter().skip(3) {
+                    if flag.starts_with('-') && flag != "--secret" && flag != "--disabled" {
+                        return Err(format!("unknown environments set option '{flag}'"));
+                    }
+                }
+                Ok(Command::EnvironmentsSet {
+                    name,
+                    key: assignment.key,
+                    value: assignment.value,
+                    secret,
+                    disabled,
+                })
+            }
+            Some("unset") => Ok(Command::EnvironmentsUnset {
+                name: require_positional(tail, 1, "environment name")?,
+                key: require_positional(tail, 2, "variable name")?,
+            }),
             Some(other) => Err(format!(
-                "unknown environments subcommand '{other}' (expected list, create, use or variables)"
+                "unknown environments subcommand '{other}' (expected list, create, use, variables, set or unset)"
             )),
             None => Err(
                 "environments needs a subcommand (list, create, use or variables)".to_string(),
@@ -630,6 +679,30 @@ mod tests {
 
         assert!(parse(["history", "list", "--status", "6xx"]).is_err());
         assert!(parse(["history", "list", "--limit", "many"]).is_err());
+    }
+
+    #[test]
+    fn environment_set_parses_assignment_and_flags() {
+        let invocation = parse(["environments", "set", "Local", "token=abc", "--secret"]).unwrap();
+        let Command::EnvironmentsSet {
+            name,
+            key,
+            value,
+            secret,
+            disabled,
+        } = invocation.command
+        else {
+            panic!("expected environments set");
+        };
+        assert_eq!(name, "Local");
+        assert_eq!(key, "token");
+        assert_eq!(value, "abc");
+        assert!(secret);
+        assert!(!disabled);
+
+        assert!(parse(["environments", "set", "Local"]).is_err());
+        assert!(parse(["environments", "set", "Local", "novalue"]).is_err());
+        assert!(parse(["environments", "unset", "Local"]).is_err());
     }
 
     #[test]
