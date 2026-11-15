@@ -124,7 +124,10 @@ mod tests {
     fn categories_are_stable() {
         assert_eq!(HttpError::Cancelled.category(), "Cancelled");
         assert!(HttpError::Cancelled.is_cancelled());
-        assert_eq!(HttpError::Timeout(5).to_string(), "The request timed out after 5 ms");
+        assert_eq!(
+            HttpError::Timeout(5).to_string(),
+            "The request timed out after 5 ms"
+        );
         assert_eq!(
             HttpError::Timeout(1).with_timeout_ms(250).to_string(),
             "The request timed out after 250 ms"

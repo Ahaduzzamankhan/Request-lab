@@ -167,9 +167,10 @@ impl RequestBodyKind {
 }
 
 /// The request body. A typed enum instead of ambiguous flags.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RequestBody {
+    #[default]
     None,
     Json {
         content: String,
@@ -181,12 +182,6 @@ pub enum RequestBody {
     FormUrlEncoded {
         fields: Vec<QueryParameter>,
     },
-}
-
-impl Default for RequestBody {
-    fn default() -> Self {
-        RequestBody::None
-    }
 }
 
 impl RequestBody {
@@ -221,9 +216,9 @@ impl RequestBody {
             RequestBody::None => true,
             RequestBody::Json { content } => content.trim().is_empty(),
             RequestBody::Raw { content, .. } => content.is_empty(),
-            RequestBody::FormUrlEncoded { fields } => {
-                fields.iter().all(|field| !field.enabled || field.key.is_empty())
-            }
+            RequestBody::FormUrlEncoded { fields } => fields
+                .iter()
+                .all(|field| !field.enabled || field.key.is_empty()),
         }
     }
 
@@ -452,10 +447,7 @@ impl Request {
         if url.is_empty() {
             return "Untitled request".to_string();
         }
-        let without_scheme = url
-            .split_once("://")
-            .map(|(_, rest)| rest)
-            .unwrap_or(url);
+        let without_scheme = url.split_once("://").map(|(_, rest)| rest).unwrap_or(url);
         crate::common::truncate_utf8(without_scheme, 60).to_string()
     }
 
@@ -598,7 +590,9 @@ mod tests {
     #[test]
     fn valid_request_has_no_issues() {
         let mut request = Request::new(HttpMethod::Post, "https://api.example.com/users");
-        request.headers.push(HeaderEntry::new("Content-Type", "application/json"));
+        request
+            .headers
+            .push(HeaderEntry::new("Content-Type", "application/json"));
         request.body = RequestBody::json(r#"{"name":"Ada"}"#);
         assert!(request.validate().is_empty(), "{:?}", request.validate());
     }
@@ -658,7 +652,9 @@ mod tests {
     fn duplicate_creates_new_identifiers() {
         let mut request = Request::new(HttpMethod::Get, "https://example.com");
         request.name = "List users".into();
-        request.headers.push(HeaderEntry::new("Accept", "application/json"));
+        request
+            .headers
+            .push(HeaderEntry::new("Accept", "application/json"));
         let copy = request.duplicate_request();
         assert_ne!(copy.id, request.id);
         assert_ne!(copy.headers[0].id, request.headers[0].id);
@@ -669,7 +665,10 @@ mod tests {
     #[test]
     fn body_kinds_and_content_types() {
         assert_eq!(RequestBody::None.kind(), RequestBodyKind::None);
-        assert_eq!(RequestBody::json("{}").content_type(), Some("application/json"));
+        assert_eq!(
+            RequestBody::json("{}").content_type(),
+            Some("application/json")
+        );
         assert_eq!(
             RequestBody::Raw {
                 content: "<x/>".into(),
@@ -686,10 +685,7 @@ mod tests {
     fn history_body_is_truncated() {
         let long = "a".repeat(MAX_HISTORY_BODY_BYTES + 100);
         let trimmed = RequestBody::json(long).for_history();
-        assert_eq!(
-            trimmed.text().map(str::len),
-            Some(MAX_HISTORY_BODY_BYTES)
-        );
+        assert_eq!(trimmed.text().map(str::len), Some(MAX_HISTORY_BODY_BYTES));
     }
 
     #[test]

@@ -286,7 +286,10 @@ mod tests {
     #[test]
     fn methods_have_distinct_colors() {
         let theme = Theme::dark();
-        assert_ne!(theme.method_color(HttpMethod::Get), theme.method_color(HttpMethod::Post));
+        assert_ne!(
+            theme.method_color(HttpMethod::Get),
+            theme.method_color(HttpMethod::Post)
+        );
         assert_eq!(theme.method_color(HttpMethod::Delete), theme.error);
     }
 }

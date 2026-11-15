@@ -70,7 +70,8 @@ impl HistoryEntry {
     }
 
     pub fn succeeded(&self) -> bool {
-        self.status_code.is_some_and(|code| (200..400).contains(&code))
+        self.status_code
+            .is_some_and(|code| (200..400).contains(&code))
     }
 
     /// `GET /users` style label for the history list.
@@ -207,7 +208,9 @@ mod tests {
         request
             .headers
             .push(HeaderEntry::new("Authorization", "Bearer super-secret"));
-        request.headers.push(HeaderEntry::new("Accept", "application/json"));
+        request
+            .headers
+            .push(HeaderEntry::new("Accept", "application/json"));
         request.authentication = Authentication::Bearer {
             token: "super-secret".into(),
         };
@@ -225,10 +228,7 @@ mod tests {
         );
         assert_eq!(entry.method, HttpMethod::Post);
         assert_eq!(entry.status_code, Some(201));
-        assert_eq!(
-            entry.request.headers[0].value,
-            crate::common::REDACTED
-        );
+        assert_eq!(entry.request.headers[0].value, crate::common::REDACTED);
         assert_eq!(entry.request.headers[1].value, "application/json");
         assert!(entry.succeeded());
         assert!(entry.label().starts_with("api.example.com"));
@@ -249,8 +249,7 @@ mod tests {
 
     #[test]
     fn replay_gets_fresh_identity() {
-        let entry =
-            HistoryEntry::from_attempt(&request(), Some(200), Some(5), None, "t".into());
+        let entry = HistoryEntry::from_attempt(&request(), Some(200), Some(5), None, "t".into());
         let replay = entry.replay_request();
         assert_ne!(replay.id, entry.request.id);
         assert_eq!(replay.url, entry.url);
@@ -263,18 +262,15 @@ mod tests {
         assert!(HistoryStatusFilter::Failed.matches(None));
         assert!(!HistoryStatusFilter::Failed.matches(Some(200)));
         assert!(HistoryStatusFilter::All.matches(None));
-        assert_eq!(HistoryStatusFilter::ClientError.status_range(), Some((400, 499)));
+        assert_eq!(
+            HistoryStatusFilter::ClientError.status_range(),
+            Some((400, 499))
+        );
     }
 
     #[test]
     fn query_filters_by_search_method_and_status() {
-        let entry = HistoryEntry::from_attempt(
-            &request(),
-            Some(404),
-            Some(9),
-            None,
-            "t".into(),
-        );
+        let entry = HistoryEntry::from_attempt(&request(), Some(404), Some(9), None, "t".into());
         assert!(HistoryQuery::default().matches(&entry));
         assert!(HistoryQuery::default().with_search("login").matches(&entry));
         assert!(!HistoryQuery::default().with_search("nope").matches(&entry));

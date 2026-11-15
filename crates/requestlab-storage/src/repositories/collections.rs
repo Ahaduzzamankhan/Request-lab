@@ -8,7 +8,8 @@ use super::{opt_text_at, opt_uuid_at, text_at, uuid_at};
 use crate::errors::StorageError;
 
 const COLLECTION_COLUMNS: &str = "id, name, description, created_at, updated_at";
-const FOLDER_COLUMNS: &str = "id, collection_id, parent_id, name, sort_order, created_at, updated_at";
+const FOLDER_COLUMNS: &str =
+    "id, collection_id, parent_id, name, sort_order, created_at, updated_at";
 const SAVED_COLUMNS: &str =
     "id, collection_id, folder_id, name, request_json, sort_order, created_at, updated_at";
 
@@ -66,10 +67,7 @@ pub async fn list_collections(pool: &SqlitePool) -> Result<Vec<Collection>, Stor
     rows.iter().map(collection_from_row).collect()
 }
 
-pub async fn get_collection(
-    pool: &SqlitePool,
-    id: Uuid,
-) -> Result<Collection, StorageError> {
+pub async fn get_collection(pool: &SqlitePool, id: Uuid) -> Result<Collection, StorageError> {
     let row = sqlx::query(&format!(
         "SELECT {COLLECTION_COLUMNS} FROM collections WHERE id = ?"
     ))
@@ -166,11 +164,13 @@ pub async fn list_folders(
 }
 
 pub async fn get_folder(pool: &SqlitePool, id: Uuid) -> Result<Folder, StorageError> {
-    let row = sqlx::query(&format!("SELECT {FOLDER_COLUMNS} FROM folders WHERE id = ?"))
-        .bind(id.to_string())
-        .fetch_optional(pool)
-        .await?
-        .ok_or(StorageError::NotFound { entity: "Folder" })?;
+    let row = sqlx::query(&format!(
+        "SELECT {FOLDER_COLUMNS} FROM folders WHERE id = ?"
+    ))
+    .bind(id.to_string())
+    .fetch_optional(pool)
+    .await?
+    .ok_or(StorageError::NotFound { entity: "Folder" })?;
     folder_from_row(&row)
 }
 
@@ -266,10 +266,7 @@ pub async fn list_saved_requests(
     rows.iter().map(saved_request_from_row).collect()
 }
 
-pub async fn get_saved_request(
-    pool: &SqlitePool,
-    id: Uuid,
-) -> Result<SavedRequest, StorageError> {
+pub async fn get_saved_request(pool: &SqlitePool, id: Uuid) -> Result<SavedRequest, StorageError> {
     let row = sqlx::query(&format!(
         "SELECT {SAVED_COLUMNS} FROM saved_requests WHERE id = ?"
     ))
@@ -366,10 +363,7 @@ pub async fn set_request_order(
 }
 
 /// Rewrite sort orders in one transaction, keeping the given order.
-pub async fn reorder_requests(
-    pool: &SqlitePool,
-    ordered_ids: &[Uuid],
-) -> Result<(), StorageError> {
+pub async fn reorder_requests(pool: &SqlitePool, ordered_ids: &[Uuid]) -> Result<(), StorageError> {
     let mut tx = pool.begin().await?;
     for (index, id) in ordered_ids.iter().enumerate() {
         sqlx::query("UPDATE saved_requests SET sort_order = ? WHERE id = ?")
@@ -416,24 +410,23 @@ pub async fn next_folder_order(
     collection_id: Uuid,
     parent_id: Option<Uuid>,
 ) -> Result<i64, StorageError> {
-    let max: Option<i64> = match parent_id {
-        Some(parent_id) => {
-            sqlx::query_scalar(
-                "SELECT MAX(sort_order) FROM folders WHERE collection_id = ? AND parent_id = ?",
-            )
-            .bind(collection_id.to_string())
-            .bind(parent_id.to_string())
-            .fetch_one(pool)
-            .await?
-        }
-        None => {
-            sqlx::query_scalar(
+    let max: Option<i64> =
+        match parent_id {
+            Some(parent_id) => {
+                sqlx::query_scalar(
+                    "SELECT MAX(sort_order) FROM folders WHERE collection_id = ? AND parent_id = ?",
+                )
+                .bind(collection_id.to_string())
+                .bind(parent_id.to_string())
+                .fetch_one(pool)
+                .await?
+            }
+            None => sqlx::query_scalar(
                 "SELECT MAX(sort_order) FROM folders WHERE collection_id = ? AND parent_id IS NULL",
             )
             .bind(collection_id.to_string())
             .fetch_one(pool)
-            .await?
-        }
-    };
+            .await?,
+        };
     Ok(max.unwrap_or(-1) + 1)
 }

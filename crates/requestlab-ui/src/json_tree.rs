@@ -77,15 +77,7 @@ pub fn build_rows(value: &Value, expanded: &HashSet<String>, search: &str) -> Ve
     let searching = !needle.is_empty();
     let mut rows = Vec::new();
     walk(
-        value,
-        "",
-        0,
-        None,
-        expanded,
-        &needle,
-        searching,
-        false,
-        &mut rows,
+        value, "", 0, None, expanded, &needle, searching, false, &mut rows,
     );
     rows
 }

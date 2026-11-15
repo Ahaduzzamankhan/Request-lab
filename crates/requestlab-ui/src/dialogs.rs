@@ -1,11 +1,11 @@
 //! Modal dialogs: confirmation, prompts, pickers and settings.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, AnyElement, Context, IntoElement};
 use requestlab_models::HttpMethod;
 
 use crate::app_view::{AppView, Dialog};
+use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
 use crate::theme::{radius, space, text, ThemeMode};
 
@@ -162,21 +162,14 @@ impl AppView {
                     let name = environment.name.clone();
                     let selected = self.active_environment == Some(id);
                     let count = environment.variables.len();
-                    list = list.child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                components::tab_button(&theme, name, selected, Some(count))
-                                    .on_click(cx.listener(
-                                        move |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.set_active_environment(Some(id), cx);
-                                            view.close_dialog(cx);
-                                        },
-                                    )),
-                            ),
-                    );
+                    list = list.child(div().flex().items_center().justify_between().child(
+                        components::tab_button(&theme, name, selected, Some(count)).on_click(
+                            cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                                view.set_active_environment(Some(id), cx);
+                                view.close_dialog(cx);
+                            }),
+                        ),
+                    ));
                 }
                 card = card.child(list).child(
                     components::button(&theme, "Close", ButtonVariant::Ghost).on_click(
@@ -212,12 +205,10 @@ impl AppView {
                     for (collection_id, folder_id, label) in targets {
                         list = list.child(
                             components::tab_button(&theme, label, false, None).on_click(
-                                cx.listener(
-                                    move |view, _: &gpui::ClickEvent, _window, cx| {
-                                        view.save_request_to(collection_id, folder_id, cx);
-                                        view.close_dialog(cx);
-                                    },
-                                ),
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.save_request_to(collection_id, folder_id, cx);
+                                    view.close_dialog(cx);
+                                }),
                             ),
                         );
                     }
@@ -237,7 +228,9 @@ impl AppView {
                 card = card.child(self.dialog_title("Settings"));
 
                 let mut timeouts = div().flex().items_center().gap(px(2.0)).child(
-                    div().w(px(120.0)).child(components::field_label(&theme, "Request timeout")),
+                    div()
+                        .w(px(120.0))
+                        .child(components::field_label(&theme, "Request timeout")),
                 );
                 for seconds in [5u64, 15, 30, 60, 120] {
                     timeouts = timeouts.child(
@@ -256,7 +249,9 @@ impl AppView {
                 }
 
                 let mut limits = div().flex().items_center().gap(px(2.0)).child(
-                    div().w(px(120.0)).child(components::field_label(&theme, "History kept")),
+                    div()
+                        .w(px(120.0))
+                        .child(components::field_label(&theme, "History kept")),
                 );
                 for limit in [200i64, 1000, 5000] {
                     limits = limits.child(
@@ -275,10 +270,16 @@ impl AppView {
                 }
 
                 let mut themes = div().flex().items_center().gap(px(2.0)).child(
-                    div().w(px(120.0)).child(components::field_label(&theme, "Theme")),
+                    div()
+                        .w(px(120.0))
+                        .child(components::field_label(&theme, "Theme")),
                 );
                 for mode in [ThemeMode::Dark, ThemeMode::Light] {
-                    let label = if mode == ThemeMode::Dark { "Dark" } else { "Light" };
+                    let label = if mode == ThemeMode::Dark {
+                        "Dark"
+                    } else {
+                        "Light"
+                    };
                     themes = themes.child(
                         components::tab_button(&theme, label, self.theme.mode == mode, None)
                             .on_click(cx.listener(
@@ -353,7 +354,6 @@ impl AppView {
             .text_color(theme.text_primary)
             .child(title.to_string())
     }
-
 }
 
 fn collect_folders(

@@ -122,7 +122,7 @@ impl CollectionTree {
     }
 
     pub fn folder(&self, id: Uuid) -> Option<&Folder> {
-        fn search<'a>(node: &'a CollectionNode, id: Uuid) -> Option<&'a Folder> {
+        fn search(node: &CollectionNode, id: Uuid) -> Option<&Folder> {
             if node.folder.as_ref().is_some_and(|folder| folder.id == id) {
                 return node.folder.as_ref();
             }
@@ -219,7 +219,7 @@ pub fn build_tree(
     while progressed && !pending.is_empty() {
         progressed = false;
         let mut still_pending = Vec::new();
-        for mut node in pending {
+        for node in pending {
             let parent_id = node.folder.as_ref().and_then(|folder| folder.parent_id);
             match parent_id {
                 None => {
@@ -375,8 +375,14 @@ mod tests {
         assert_eq!(tree.requests_in(Some(users.id))[0].name, "List users");
         assert!(tree.folder_is_descendant(admin.id, users.id));
         assert!(!tree.folder_is_descendant(users.id, admin.id));
-        assert_eq!(tree.folder(admin.id).map(|f| f.name.as_str()), Some("Admin"));
-        assert_eq!(tree.find_request(request_admin.id).unwrap().name, "Ban user");
+        assert_eq!(
+            tree.folder(admin.id).map(|f| f.name.as_str()),
+            Some("Admin")
+        );
+        assert_eq!(
+            tree.find_request(request_admin.id).unwrap().name,
+            "Ban user"
+        );
     }
 
     #[test]
@@ -395,7 +401,10 @@ mod tests {
         let child = folder(collection.id, "Child", Some(Uuid::new_v4()), 1);
         let tree = build_tree(collection, vec![child], vec![]);
         assert_eq!(tree.root.children.len(), 1);
-        assert_eq!(tree.root.children[0].folder.as_ref().unwrap().parent_id, None);
+        assert_eq!(
+            tree.root.children[0].folder.as_ref().unwrap().parent_id,
+            None
+        );
     }
 
     #[test]

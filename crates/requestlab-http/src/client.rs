@@ -196,7 +196,10 @@ mod tests {
         let config = HttpConfig::default();
         assert_eq!(config.timeout, Duration::from_secs(30));
         assert_eq!(config.max_redirects, 10);
-        assert_eq!(config.max_response_bytes, requestlab_models::MAX_RESPONSE_BYTES);
+        assert_eq!(
+            config.max_response_bytes,
+            requestlab_models::MAX_RESPONSE_BYTES
+        );
         assert!(config.user_agent.starts_with("RequestLab/"));
     }
 

@@ -1,11 +1,11 @@
 //! Application toolbar, request tab strip and status bar.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, Context, IntoElement, SharedString, Window};
 use requestlab_models::human_duration;
 
 use crate::app_view::{AppView, Dialog, SidebarSection};
+use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
 use crate::theme::{radius, space, text, with_alpha, ThemeMode, TITLE_BAR_HEIGHT};
 
@@ -106,28 +106,38 @@ impl AppView {
                             })),
                     )
                     .child(
-                        components::icon_button(&theme, if theme.mode == ThemeMode::Dark { "☀" } else { "☾" })
-                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                        components::icon_button(
+                            &theme,
+                            if theme.mode == ThemeMode::Dark {
+                                "☀"
+                            } else {
+                                "☾"
+                            },
+                        )
+                        .on_click(cx.listener(
+                            |view, _: &gpui::ClickEvent, _window, cx| {
                                 let next = if view.theme.mode == ThemeMode::Dark {
                                     ThemeMode::Light
                                 } else {
                                     ThemeMode::Dark
                                 };
                                 view.set_theme(next, cx);
-                            })),
-                    )
-                    .child(
-                        components::icon_button(&theme, "⚙").on_click(cx.listener(
-                            |view, _: &gpui::ClickEvent, _window, cx| {
-                                view.open_dialog(Dialog::Settings, cx);
                             },
                         )),
                     )
+                    .child(components::icon_button(&theme, "⚙").on_click(cx.listener(
+                        |view, _: &gpui::ClickEvent, _window, cx| {
+                            view.open_dialog(Dialog::Settings, cx);
+                        },
+                    )))
                     .child(
                         div()
                             .text_size(text::micro())
                             .text_color(theme.text_muted)
-                            .child(format!("{tab_count} tab{}", if tab_count == 1 { "" } else { "s" })),
+                            .child(format!(
+                                "{tab_count} tab{}",
+                                if tab_count == 1 { "" } else { "s" }
+                            )),
                     ),
             )
     }
@@ -171,7 +181,11 @@ impl AppView {
                         .flex_shrink_0()
                         .size(px(5.0))
                         .rounded(px(3.0))
-                        .bg(if unsaved { theme.warning } else { theme.success }),
+                        .bg(if unsaved {
+                            theme.warning
+                        } else {
+                            theme.success
+                        }),
                 )
                 .child(div().truncate().child(title))
                 .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
@@ -180,29 +194,25 @@ impl AppView {
                 }));
 
             if self.tabs.len() > 1 {
-                item = item.child(
-                    components::icon_button(&theme, "✕").on_click(cx.listener(
-                        move |view, event: &gpui::ClickEvent, window, cx| {
-                            if event.click_count() > 0 {
-                                view.close_tab(index, cx);
-                                let _ = window;
-                            }
-                        },
-                    )),
-                );
+                item = item.child(components::icon_button(&theme, "✕").on_click(cx.listener(
+                    move |view, event: &gpui::ClickEvent, window, cx| {
+                        if event.click_count() > 0 {
+                            view.close_tab(index, cx);
+                            let _ = window;
+                        }
+                    },
+                )));
             }
             strip = strip.child(item);
         }
 
-        strip.child(
-            div().flex().items_center().child(
-                components::icon_button(&theme, "＋").on_click(cx.listener(
-                    |view, _: &gpui::ClickEvent, _window, cx| {
-                        view.new_tab(cx);
-                    },
-                )),
-            ),
-        )
+        strip.child(div().flex().items_center().child(
+            components::icon_button(&theme, "＋").on_click(cx.listener(
+                |view, _: &gpui::ClickEvent, _window, cx| {
+                    view.new_tab(cx);
+                },
+            )),
+        ))
     }
 
     pub(crate) fn render_status_bar(
@@ -292,7 +302,6 @@ impl AppView {
                     .child(div().truncate().max_w(px(420.0)).child(note)),
             )
     }
-
 }
 
 /// A small helper so panels can render consistent buttons.

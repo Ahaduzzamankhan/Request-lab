@@ -4,8 +4,38 @@
 //! handlers. Nothing here renders a control that has no behaviour attached.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
-use gpui::{div, px, CursorStyle, Div, IntoElement, SharedString};
+use gpui::{div, px, CursorStyle, Div, SharedString};
+
+/// Interaction helpers for elements that are not addressable by id.
+///
+/// GPUI 0.2.2 only exposes `on_click` and `overflow_scroll` on `Stateful`
+/// elements (`Div::id`), which would force a synthetic id at every call site.
+/// These helpers attach the same handlers and styles directly to the element's
+/// interactivity state; the renderer still inserts a hitbox because the click
+/// listener list is non-empty.
+pub trait InteractiveExt: gpui::InteractiveElement + gpui::Styled + Sized {
+    fn on_click(
+        self,
+        listener: impl Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static,
+    ) -> Self {
+        let mut this = self;
+        this.interactivity().on_click(listener);
+        this
+    }
+
+    fn overflow_scroll(mut self) -> Self {
+        self.style().overflow.x = Some(gpui::Overflow::Scroll);
+        self.style().overflow.y = Some(gpui::Overflow::Scroll);
+        self
+    }
+
+    fn overflow_y_scroll(mut self) -> Self {
+        self.style().overflow.y = Some(gpui::Overflow::Scroll);
+        self
+    }
+}
+
+impl<T: gpui::InteractiveElement + gpui::Styled> InteractiveExt for T {}
 use requestlab_models::HttpMethod;
 
 use crate::theme::{radius, space, text, with_alpha, Theme};
@@ -117,12 +147,7 @@ pub fn tab_button(
 }
 
 /// A small pill of text, used for methods and statuses.
-pub fn chip(
-    theme: &Theme,
-    label: impl Into<SharedString>,
-    color: gpui::Rgba,
-    filled: bool,
-) -> Div {
+pub fn chip(theme: &Theme, label: impl Into<SharedString>, color: gpui::Rgba, filled: bool) -> Div {
     let background = if filled {
         with_alpha(color, 0.16)
     } else {
@@ -227,12 +252,7 @@ pub fn loading(theme: &Theme, label: impl Into<SharedString>) -> Div {
         .gap(space::sm())
         .text_size(text::small())
         .text_color(theme.text_secondary)
-        .child(
-            div()
-                .size(px(8.0))
-                .rounded(px(4.0))
-                .bg(theme.accent),
-        )
+        .child(div().size(px(8.0)).rounded(px(4.0)).bg(theme.accent))
         .child(label.into())
 }
 
@@ -330,4 +350,3 @@ mod tests {
         let _ = status_chip(&theme, Some(200), "200 OK");
     }
 }
-

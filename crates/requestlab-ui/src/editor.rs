@@ -1,12 +1,12 @@
 //! The request editor: URL bar, configuration tabs and key/value editors.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, Context, IntoElement, SharedString};
 use requestlab_models::{ApiKeyLocation, HttpMethod, RequestBodyKind};
 use uuid::Uuid;
 
 use crate::app_view::{AppView, Dialog};
+use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
 use crate::editor_state::{AuthKind, EditorTab, KeyValueRow};
 use crate::theme::{radius, space, text};
@@ -72,13 +72,15 @@ impl AppView {
                 )
                 .h(px(28.0))
                 .min_w(px(72.0))
-                .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                    if view.active_tab_ref().sending {
-                        view.cancel_request(cx);
-                    } else {
-                        view.send_request(cx);
-                    }
-                })),
+                .on_click(cx.listener(
+                    |view, _: &gpui::ClickEvent, _window, cx| {
+                        if view.active_tab_ref().sending {
+                            view.cancel_request(cx);
+                        } else {
+                            view.send_request(cx);
+                        }
+                    },
+                )),
             )
             .child(
                 components::button(
@@ -87,19 +89,19 @@ impl AppView {
                     ButtonVariant::Secondary,
                 )
                 .h(px(28.0))
-                .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                    match view.active_tab_ref().editor.saved {
-                        Some(location) => view.save_request_to(
-                            location.collection_id,
-                            location.folder_id,
-                            cx,
-                        ),
-                        None => {
-                            let index = view.active_tab;
-                            view.open_dialog(Dialog::SaveRequest { tab: index }, cx);
+                .on_click(cx.listener(
+                    |view, _: &gpui::ClickEvent, _window, cx| {
+                        match view.active_tab_ref().editor.saved {
+                            Some(location) => {
+                                view.save_request_to(location.collection_id, location.folder_id, cx)
+                            }
+                            None => {
+                                let index = view.active_tab;
+                                view.open_dialog(Dialog::SaveRequest { tab: index }, cx);
+                            }
                         }
-                    }
-                })),
+                    },
+                )),
             );
 
         let mut tab_row = div()
@@ -119,12 +121,11 @@ impl AppView {
                     .mr(space::md())
                     .text_size(text::small())
                     .text_color(theme.text_secondary)
-                    .child(
-                        div()
-                            .size(px(5.0))
-                            .rounded(px(3.0))
-                            .bg(if saved { theme.success } else { theme.warning }),
-                    )
+                    .child(div().size(px(5.0)).rounded(px(3.0)).bg(if saved {
+                        theme.success
+                    } else {
+                        theme.warning
+                    }))
                     .child(title),
             );
 
@@ -132,19 +133,24 @@ impl AppView {
             let selected = editor.tab == editor_tab;
             let count = editor.count(editor_tab, cx);
             tab_row = tab_row.child(
-                components::tab_button(&theme, editor_tab.label(), selected, Some(count))
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                components::tab_button(&theme, editor_tab.label(), selected, Some(count)).on_click(
+                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                             tab.editor.tab = editor_tab;
                         }
                         cx.notify();
-                    })),
+                    }),
+                ),
             );
         }
 
         let content: gpui::AnyElement = match editor.tab {
-            EditorTab::Params => self.render_kv_editor(EditorTab::Params, cx).into_any_element(),
-            EditorTab::Headers => self.render_kv_editor(EditorTab::Headers, cx).into_any_element(),
+            EditorTab::Params => self
+                .render_kv_editor(EditorTab::Params, cx)
+                .into_any_element(),
+            EditorTab::Headers => self
+                .render_kv_editor(EditorTab::Headers, cx)
+                .into_any_element(),
             EditorTab::Body => self.render_body_editor(cx).into_any_element(),
             EditorTab::Auth => self.render_auth_editor(cx).into_any_element(),
         };
@@ -186,6 +192,7 @@ impl AppView {
                             .text_size(text::micro())
                             .text_color(theme.text_muted)
                             .child("Request is valid")
+                            .into_any_element()
                     } else {
                         footer.into_any_element()
                     }),
@@ -228,24 +235,20 @@ impl AppView {
                     .px(space::sm())
                     .py(px(2.0))
                     .rounded(radius::sm())
-                    .child(
-                        components::toggle(&theme, enabled).on_click(cx.listener(
-                            move |view, _: &gpui::ClickEvent, _window, cx| {
-                                if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                                    let rows = match editor_tab {
-                                        EditorTab::Headers => &mut tab.editor.headers,
-                                        _ => &mut tab.editor.params,
-                                    };
-                                    if let Some(row) =
-                                        rows.iter_mut().find(|row| row.id == row_id)
-                                    {
-                                        row.enabled = !row.enabled;
-                                    }
+                    .child(components::toggle(&theme, enabled).on_click(cx.listener(
+                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                let rows = match editor_tab {
+                                    EditorTab::Headers => &mut tab.editor.headers,
+                                    _ => &mut tab.editor.params,
+                                };
+                                if let Some(row) = rows.iter_mut().find(|row| row.id == row_id) {
+                                    row.enabled = !row.enabled;
                                 }
-                                cx.notify();
-                            },
-                        )),
-                    )
+                            }
+                            cx.notify();
+                        },
+                    )))
                     .child(
                         div()
                             .flex_1()
@@ -279,23 +282,19 @@ impl AppView {
                             .flex()
                             .items_center()
                             .w(px(52.0))
-                            .child(
-                                components::icon_button(&theme, "⧉").on_click(cx.listener(
-                                    move |view, _: &gpui::ClickEvent, _window, cx| {
-                                        view.duplicate_row(editor_tab, row_id, cx);
-                                    },
-                                )),
-                            )
-                            .child(
-                                components::icon_button(&theme, "✕").on_click(cx.listener(
-                                    move |view, _: &gpui::ClickEvent, _window, cx| {
-                                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                                            tab.editor.remove_row(editor_tab, row_id);
-                                        }
-                                        cx.notify();
-                                    },
-                                )),
-                            ),
+                            .child(components::icon_button(&theme, "⧉").on_click(cx.listener(
+                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.duplicate_row(editor_tab, row_id, cx);
+                                },
+                            )))
+                            .child(components::icon_button(&theme, "✕").on_click(cx.listener(
+                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                        tab.editor.remove_row(editor_tab, row_id);
+                                    }
+                                    cx.notify();
+                                },
+                            ))),
                     ),
             );
         }
@@ -308,13 +307,14 @@ impl AppView {
                 .px(space::sm())
                 .py(space::sm())
                 .child(
-                    components::button(&theme, "＋ Add row", ButtonVariant::Ghost)
-                        .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                    components::button(&theme, "＋ Add row", ButtonVariant::Ghost).on_click(
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 tab.editor.add_row(editor_tab, cx);
                             }
                             cx.notify();
-                        })),
+                        }),
+                    ),
                 ),
         )
     }
@@ -327,18 +327,13 @@ impl AppView {
         let mut kinds = div().flex().items_center().gap(px(2.0)).p(space::sm());
         for candidate in RequestBodyKind::ALL {
             kinds = kinds.child(
-                components::tab_button(
-                    &theme,
-                    candidate.label(),
-                    kind == candidate,
-                    None,
-                )
-                .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                        tab.editor.body_kind = candidate;
-                    }
-                    cx.notify();
-                })),
+                components::tab_button(&theme, candidate.label(), kind == candidate, None)
+                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                            tab.editor.body_kind = candidate;
+                        }
+                        cx.notify();
+                    })),
             );
         }
 
@@ -475,29 +470,26 @@ impl AppView {
                                     .text_size(text::small())
                                     .child(row.value.clone()),
                             )
-                            .child(components::icon_button(&theme, "✕").on_click(
-                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .child(components::icon_button(&theme, "✕").on_click(cx.listener(
+                                move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.remove_form_row(row_id);
                                     }
                                     cx.notify();
-                                }),
-                            )),
+                                },
+                            ))),
                     );
                 }
-                rows.child(
-                    div().px(space::sm()).py(space::sm()).child(
-                        components::button(&theme, "＋ Add field", ButtonVariant::Ghost)
-                            .on_click(cx.listener(
-                                |view, _: &gpui::ClickEvent, _window, cx| {
-                                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                                        tab.editor.add_form_row(cx);
-                                    }
-                                    cx.notify();
-                                },
-                            )),
+                rows.child(div().px(space::sm()).py(space::sm()).child(
+                    components::button(&theme, "＋ Add field", ButtonVariant::Ghost).on_click(
+                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                tab.editor.add_form_row(cx);
+                            }
+                            cx.notify();
+                        }),
                     ),
-                )
+                ))
                 .into_any_element()
             }
         };
@@ -526,23 +518,18 @@ impl AppView {
         let mut kinds = div().flex().items_center().gap(px(2.0)).p(space::sm());
         for candidate in AuthKind::ALL {
             kinds = kinds.child(
-                components::tab_button(
-                    &theme,
-                    candidate.label(),
-                    kind == candidate,
-                    None,
-                )
-                .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                        let editor = &mut tab.editor;
-                        if editor.auth_kind != candidate {
-                            editor.auth_kind = candidate;
-                            editor.auth_primary.update(cx, |input, _| input.clear());
-                            editor.auth_secondary.update(cx, |input, _| input.clear());
+                components::tab_button(&theme, candidate.label(), kind == candidate, None)
+                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                            let editor = &mut tab.editor;
+                            if editor.auth_kind != candidate {
+                                editor.auth_kind = candidate;
+                                editor.auth_primary.update(cx, |input, _| input.clear());
+                                editor.auth_secondary.update(cx, |input, _| input.clear());
+                            }
                         }
-                    }
-                    cx.notify();
-                })),
+                        cx.notify();
+                    })),
             );
         }
 
@@ -566,7 +553,11 @@ impl AppView {
                             .flex()
                             .items_center()
                             .gap(space::sm())
-                            .child(div().w(px(90.0)).child(components::field_label(&theme, primary_label)))
+                            .child(
+                                div()
+                                    .w(px(90.0))
+                                    .child(components::field_label(&theme, primary_label)),
+                            )
                             .child(
                                 div()
                                     .flex_1()
@@ -588,7 +579,11 @@ impl AppView {
                             .flex()
                             .items_center()
                             .gap(space::sm())
-                            .child(div().w(px(90.0)).child(components::field_label(&theme, secondary_label)))
+                            .child(
+                                div()
+                                    .w(px(90.0))
+                                    .child(components::field_label(&theme, secondary_label)),
+                            )
                             .child(
                                 div()
                                     .flex_1()
@@ -607,7 +602,9 @@ impl AppView {
 
                 if kind == AuthKind::ApiKey {
                     let mut placement = div().flex().items_center().gap(space::xs()).child(
-                        div().w(px(90.0)).child(components::field_label(&theme, "Add to")),
+                        div()
+                            .w(px(90.0))
+                            .child(components::field_label(&theme, "Add to")),
                     );
                     for location in [ApiKeyLocation::Header, ApiKeyLocation::Query] {
                         let label = if location == ApiKeyLocation::Header {
@@ -640,7 +637,9 @@ impl AppView {
                         div()
                             .text_size(text::micro())
                             .text_color(theme.text_muted)
-                            .child("Credentials are stored with the request and never written to logs."),
+                            .child(
+                            "Credentials are stored with the request and never written to logs.",
+                        ),
                     )
                     .into_any_element()
             }
@@ -713,6 +712,3 @@ impl AppView {
         cx.notify();
     }
 }
-
-
-

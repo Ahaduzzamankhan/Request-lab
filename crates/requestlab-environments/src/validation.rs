@@ -76,9 +76,15 @@ mod tests {
         ];
         let problems = validate_variables(&variables);
         assert_eq!(problems.len(), 3);
-        assert!(problems.iter().any(|problem| problem.contains("more than once")));
-        assert!(problems.iter().any(|problem| problem.contains("not a valid variable name")));
-        assert!(problems.iter().any(|problem| problem.contains("no variable name")));
+        assert!(problems
+            .iter()
+            .any(|problem| problem.contains("more than once")));
+        assert!(problems
+            .iter()
+            .any(|problem| problem.contains("not a valid variable name")));
+        assert!(problems
+            .iter()
+            .any(|problem| problem.contains("no variable name")));
     }
 
     #[test]

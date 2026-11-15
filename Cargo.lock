@@ -4559,6 +4559,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "requestlab-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "requestlab-core",
+ "requestlab-models",
+ "requestlab-storage",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "requestlab-collections"
 version = "0.1.0"
 dependencies = [

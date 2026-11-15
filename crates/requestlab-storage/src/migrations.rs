@@ -102,7 +102,10 @@ pub const MIGRATIONS: &[Migration] = &[Migration {
 
 /// The schema version this build expects.
 pub fn latest_version() -> i64 {
-    MIGRATIONS.last().map(|migration| migration.version).unwrap_or(0)
+    MIGRATIONS
+        .last()
+        .map(|migration| migration.version)
+        .unwrap_or(0)
 }
 
 /// Read the schema version recorded in the database file.

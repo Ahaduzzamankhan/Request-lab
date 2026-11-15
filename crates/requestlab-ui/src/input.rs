@@ -8,13 +8,12 @@
 use std::ops::Range;
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{
     actions, div, fill, point, px, relative, size, App, Bounds, ClipboardItem, Context,
     CursorStyle, Element, ElementId, ElementInputHandler, Entity, EntityInputHandler, FocusHandle,
-    Focusable, GlobalElementId, InspectorElementId, KeyBinding, LayoutId, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, SharedString,
-    IntoElement, Render, Style, TextRun, UTF16Selection, Window,
+    Focusable, GlobalElementId, InspectorElementId, IntoElement, KeyBinding, LayoutId, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, Render, SharedString,
+    Style, TextRun, UTF16Selection, Window,
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -605,9 +604,7 @@ impl EntityInputHandler for TextInput {
             .map(|new_range| {
                 range.start + new_range.start..range.start + new_range.end.min(new_text.len())
             })
-            .unwrap_or_else(|| {
-                range.start + new_text.len()..range.start + new_text.len()
-            });
+            .unwrap_or_else(|| range.start + new_text.len()..range.start + new_text.len());
         cx.notify();
     }
 
@@ -739,12 +736,11 @@ impl Element for TextElement {
                 underline: None,
                 strikethrough: None,
             };
-            shapes.push(window.text_system().shape_line(
-                line.clone(),
-                font_size,
-                &[run],
-                None,
-            ));
+            shapes.push(
+                window
+                    .text_system()
+                    .shape_line(line.clone(), font_size, &[run], None),
+            );
         }
 
         let mut selection_quads = Vec::new();
@@ -754,8 +750,8 @@ impl Element for TextElement {
                 let line_end = line_start + line.len();
                 // A line is touched when the selection reaches into it or spans
                 // its trailing newline.
-                let touched = selection.start < line_end.max(line_start + 1)
-                    && selection.end > line_start;
+                let touched =
+                    selection.start < line_end.max(line_start + 1) && selection.end > line_start;
                 if touched {
                     if let Some(shape) = shapes.get(index) {
                         let from = selection.start.max(line_start).min(line_end);
@@ -829,7 +825,7 @@ impl Element for TextElement {
         }
 
         let line_height = window.line_height();
-        let mut shapes = std::mem::take(&mut prepaint.shapes);
+        let shapes = std::mem::take(&mut prepaint.shapes);
         for (index, shape) in shapes.iter().enumerate() {
             let origin = point(bounds.left(), bounds.top() + line_height * index as f32);
             let _ = shape.paint(origin, line_height, window, cx);

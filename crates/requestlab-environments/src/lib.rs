@@ -11,5 +11,5 @@ pub mod validation;
 
 pub use errors::{EnvironmentError, ResolutionError};
 pub use manager::EnvironmentService;
-pub use resolver::{resolve_text, resolve_request, ResolvedRequest, Resolution};
+pub use resolver::{resolve_request, resolve_text, Resolution, ResolvedRequest};
 pub use validation::validate_variables;

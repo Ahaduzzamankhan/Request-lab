@@ -101,7 +101,10 @@ pub fn default_data_dir() -> PathBuf {
         }
     }
     if let Some(home) = std::env::var_os("HOME") {
-        return PathBuf::from(home).join(".local").join("share").join("RequestLab");
+        return PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join("RequestLab");
     }
     PathBuf::from("RequestLab")
 }
@@ -116,7 +119,9 @@ pub fn default_database_path() -> PathBuf {
 /// If the existing file cannot be opened, it is moved aside with a timestamped
 /// name so the user keeps the data for inspection, and a fresh database is
 /// created. The returned flag reports whether recovery happened.
-pub async fn open_or_recover(path: impl AsRef<Path>) -> Result<(Storage, Option<PathBuf>), StorageError> {
+pub async fn open_or_recover(
+    path: impl AsRef<Path>,
+) -> Result<(Storage, Option<PathBuf>), StorageError> {
     let path = path.as_ref().to_path_buf();
     match Storage::open(&path).await {
         Ok(storage) => Ok((storage, None)),

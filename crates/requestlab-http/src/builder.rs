@@ -233,7 +233,11 @@ pub fn prepare_request(
     };
 
     let body = body.filter(|body| !body.is_empty() || !matches!(&request.body, RequestBody::None));
-    let body = if request.method.forbids_body() { None } else { body };
+    let body = if request.method.forbids_body() {
+        None
+    } else {
+        body
+    };
 
     // A body-less GET stays body-less unless the user explicitly kept content.
     let body = match (&body, request.method) {
@@ -265,10 +269,7 @@ pub fn encode_query_value(value: &str) -> String {
     let mut serializer = form_urlencoded::Serializer::new(String::new());
     serializer.append_pair("v", value);
     let encoded = serializer.finish();
-    encoded
-        .strip_prefix("v=")
-        .unwrap_or(&encoded)
-        .to_string()
+    encoded.strip_prefix("v=").unwrap_or(&encoded).to_string()
 }
 
 /// Basic auth header value, exposed for tests and previews.
@@ -322,10 +323,7 @@ mod tests {
         let mut request = Request::new(HttpMethod::Post, "https://example.com");
         request.body = RequestBody::json("{\"a\":1}");
         let prepared = prepare_request(&request, &options()).unwrap();
-        assert_eq!(
-            prepared.header("Content-Type"),
-            Some("application/json")
-        );
+        assert_eq!(prepared.header("Content-Type"), Some("application/json"));
 
         let mut form = Request::new(HttpMethod::Post, "https://example.com");
         form.body = RequestBody::form(vec![

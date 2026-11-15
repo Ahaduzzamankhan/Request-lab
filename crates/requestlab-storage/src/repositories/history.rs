@@ -2,8 +2,8 @@
 
 use requestlab_models::{HistoryEntry, HistoryQuery, HistoryStatusFilter, HttpMethod, Request};
 use sqlx::sqlite::SqliteRow;
-use sqlx::SqlitePool;
 use sqlx::Row;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use super::{opt_text_at, text_at, uuid_at};
@@ -23,7 +23,9 @@ fn history_from_row(row: &SqliteRow) -> Result<HistoryEntry, StorageError> {
             .ok_or_else(|| StorageError::InvalidData(format!("unknown method {method_raw}")))?,
         url: text_at(row, "url")?,
         request,
-        status_code: row.try_get::<Option<i64>, _>("status_code")?.map(|code| code as u16),
+        status_code: row
+            .try_get::<Option<i64>, _>("status_code")?
+            .map(|code| code as u16),
         duration_ms: row
             .try_get::<Option<i64>, _>("duration_ms")?
             .map(|ms| ms.max(0) as u64),

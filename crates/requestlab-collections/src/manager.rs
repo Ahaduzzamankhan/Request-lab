@@ -178,11 +178,7 @@ impl CollectionService {
         Ok(folder)
     }
 
-    pub async fn rename_folder(
-        &self,
-        folder_id: Uuid,
-        name: &str,
-    ) -> Result<(), CollectionError> {
+    pub async fn rename_folder(&self, folder_id: Uuid, name: &str) -> Result<(), CollectionError> {
         let name = normalized_name(name)?;
         repo::rename_folder(self.pool(), folder_id, &name, &now_rfc3339()).await?;
         Ok(())
@@ -282,10 +278,7 @@ impl CollectionService {
         Ok(())
     }
 
-    pub async fn saved_request(
-        &self,
-        saved_id: Uuid,
-    ) -> Result<SavedRequest, CollectionError> {
+    pub async fn saved_request(&self, saved_id: Uuid) -> Result<SavedRequest, CollectionError> {
         Ok(repo::get_saved_request(self.pool(), saved_id).await?)
     }
 
@@ -333,8 +326,8 @@ impl CollectionService {
                 ));
             }
         }
-        let order = repo::next_request_order(self.pool(), saved.collection_id, target_folder)
-            .await?;
+        let order =
+            repo::next_request_order(self.pool(), saved.collection_id, target_folder).await?;
         let name = saved.display_name();
         repo::update_saved_request(
             self.pool(),
@@ -472,14 +465,23 @@ mod tests {
     async fn moves_requests_between_folders() {
         let service = service().await;
         let collection = service.create_collection("APIs").await.unwrap();
-        let a = service.create_folder(collection.id, None, "A").await.unwrap();
-        let b = service.create_folder(collection.id, None, "B").await.unwrap();
+        let a = service
+            .create_folder(collection.id, None, "A")
+            .await
+            .unwrap();
+        let b = service
+            .create_folder(collection.id, None, "B")
+            .await
+            .unwrap();
         let request = Request::new(HttpMethod::Get, "https://example.com");
         let saved = service
             .save_request(collection.id, Some(a.id), "Ping", &request)
             .await
             .unwrap();
-        service.move_saved_request(saved.id, Some(b.id)).await.unwrap();
+        service
+            .move_saved_request(saved.id, Some(b.id))
+            .await
+            .unwrap();
         let moved = service.saved_request(saved.id).await.unwrap();
         assert_eq!(moved.folder_id, Some(b.id));
         let tree = service.tree(collection.id).await.unwrap();

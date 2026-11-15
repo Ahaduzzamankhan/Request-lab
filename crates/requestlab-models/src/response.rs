@@ -196,9 +196,12 @@ pub fn classify_body(content_type: Option<&str>, bytes: &[u8]) -> BodyKind {
         {
             return BodyKind::Text;
         }
-        if essence == "application/octet-stream" || essence.starts_with("image/")
-            || essence.starts_with("audio/") || essence.starts_with("video/")
-            || essence.contains("zip") || essence.contains("pdf")
+        if essence == "application/octet-stream"
+            || essence.starts_with("image/")
+            || essence.starts_with("audio/")
+            || essence.starts_with("video/")
+            || essence.contains("zip")
+            || essence.contains("pdf")
             || essence.contains("protobuf")
         {
             return BodyKind::Binary;
@@ -382,14 +385,20 @@ mod tests {
             classify_body(Some("application/octet-stream"), &[0xff, 0x00]),
             BodyKind::Binary
         );
-        assert_eq!(classify_body(Some("application/json"), b""), BodyKind::Empty);
+        assert_eq!(
+            classify_body(Some("application/json"), b""),
+            BodyKind::Empty
+        );
     }
 
     #[test]
     fn falls_back_to_content_sniffing() {
         assert_eq!(classify_body(None, b"{\"a\":1}"), BodyKind::Text);
         assert_eq!(classify_body(None, &[0, 159, 146, 150]), BodyKind::Binary);
-        assert_eq!(classify_body(Some("application/unknown"), b"plain"), BodyKind::Text);
+        assert_eq!(
+            classify_body(Some("application/unknown"), b"plain"),
+            BodyKind::Text
+        );
     }
 
     #[test]

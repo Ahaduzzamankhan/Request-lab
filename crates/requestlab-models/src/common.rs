@@ -297,11 +297,11 @@ mod tests {
     #[test]
     fn sensitive_headers_are_redacted() {
         assert_eq!(redact_if_sensitive("Authorization", "Bearer abc"), REDACTED);
+        assert_eq!(redact_if_sensitive("X-Api-Key", "secret"), REDACTED);
         assert_eq!(
-            redact_if_sensitive("X-Api-Key", "secret"),
-            REDACTED
+            redact_if_sensitive("Accept", "application/json"),
+            "application/json"
         );
-        assert_eq!(redact_if_sensitive("Accept", "application/json"), "application/json");
         assert!(is_sensitive_header("X-Auth-Token"));
     }
 

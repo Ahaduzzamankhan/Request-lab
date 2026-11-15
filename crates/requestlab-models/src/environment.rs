@@ -115,9 +115,10 @@ mod tests {
     #[test]
     fn looks_up_only_enabled_variables() {
         let mut environment = Environment::new("Development");
-        environment
-            .variables
-            .push(EnvironmentVariable::new("BASE_URL", "http://localhost:3000"));
+        environment.variables.push(EnvironmentVariable::new(
+            "BASE_URL",
+            "http://localhost:3000",
+        ));
         let mut disabled = EnvironmentVariable::new("API_VERSION", "v1");
         disabled.enabled = false;
         environment.variables.push(disabled);

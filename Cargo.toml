@@ -9,14 +9,13 @@ members = [
     "crates/requestlab-core",
     "crates/requestlab-ui",
     "crates/requestlab-app",
+    "crates/requestlab-cli",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-authors = ["RequestLab"]
-repository = "https://github.com/Ahaduzzamankhan/report-lab"
 
 [workspace.dependencies]
 # Shared runtime / serialization

@@ -5,13 +5,10 @@ use std::time::Duration;
 
 use requestlab_collections::CollectionService;
 use requestlab_environments::EnvironmentService;
-use requestlab_http::{
-    prepare_request, HttpClient, HttpConfig, HttpError, SendOptions,
-};
 use requestlab_http::client::cancellation_channel;
+use requestlab_http::{prepare_request, HttpClient, HttpConfig, HttpError, SendOptions};
 use requestlab_models::{
     now_rfc3339, HistoryEntry, HistoryQuery, HttpMethod, HttpResponse, Request,
-    DEFAULT_HISTORY_LIMIT,
 };
 use requestlab_storage::{
     repositories::{history as history_repo, settings as settings_repo},
@@ -49,10 +46,7 @@ impl AppService {
         Self::from_storage(storage, None).await
     }
 
-    async fn from_storage(
-        storage: Storage,
-        recovered: Option<PathBuf>,
-    ) -> Result<Self, CoreError> {
+    async fn from_storage(storage: Storage, recovered: Option<PathBuf>) -> Result<Self, CoreError> {
         let settings = load_settings(&storage).await?;
         let http = HttpClient::new(HttpConfig {
             timeout: Duration::from_secs(settings.timeout_seconds),
@@ -175,7 +169,11 @@ impl AppService {
             .map_err(ExecutionError::Http);
 
         let history_id = self
-            .record_attempt(&resolved.request, result.as_ref().err().map(|e| e.message()), result.as_ref().ok())
+            .record_attempt(
+                &resolved.request,
+                result.as_ref().err().map(|e| e.message()),
+                result.as_ref().ok(),
+            )
             .await;
 
         ExecutionOutcome {
@@ -221,7 +219,8 @@ impl AppService {
     }
 
     async fn record_failure(&self, request: &Request, error: &ExecutionError) -> Option<Uuid> {
-        self.record_attempt(request, Some(error.message()), None).await
+        self.record_attempt(request, Some(error.message()), None)
+            .await
     }
 
     pub async fn history(&self, query: &HistoryQuery) -> Result<Vec<HistoryEntry>, CoreError> {
@@ -252,9 +251,14 @@ impl AppService {
     }
 
     pub async fn set_history_limit(&mut self, limit: i64) -> Result<(), CoreError> {
-        let limit = limit.clamp(50, 100_000);
+        let limit = limit.clamp(10, 100_000);
         self.settings.history_limit = limit;
-        settings_repo::set(self.storage.pool(), HISTORY_RETENTION_KEY, &limit.to_string()).await?;
+        settings_repo::set(
+            self.storage.pool(),
+            HISTORY_RETENTION_KEY,
+            &limit.to_string(),
+        )
+        .await?;
         history_repo::prune(self.storage.pool(), limit).await?;
         Ok(())
     }
@@ -282,13 +286,11 @@ async fn load_settings(storage: &Storage) -> Result<AppSettings, CoreError> {
     }
     if let Some(raw) = settings_repo::get(pool, HISTORY_RETENTION_KEY).await? {
         if let Ok(limit) = raw.parse::<i64>() {
-            settings.history_limit = limit.clamp(50, 100_000);
+            settings.history_limit = limit.clamp(10, 100_000);
         }
     }
     if let Some(raw) = settings_repo::get(pool, THEME_KEY).await? {
         settings.theme = raw;
-    } else {
-        settings.history_limit = DEFAULT_HISTORY_LIMIT;
     }
     Ok(settings)
 }

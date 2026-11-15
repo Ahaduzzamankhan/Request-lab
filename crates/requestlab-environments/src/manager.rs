@@ -135,10 +135,7 @@ impl EnvironmentService {
     }
 
     /// Resolve a request against the active environment.
-    pub async fn resolve(
-        &self,
-        request: &Request,
-    ) -> Result<ResolvedRequest, EnvironmentError> {
+    pub async fn resolve(&self, request: &Request) -> Result<ResolvedRequest, EnvironmentError> {
         let active = self.active().await?;
         self.resolve_with_active(request, active.as_ref())
     }
@@ -209,7 +206,9 @@ mod tests {
         service.set_active(Some(environment.id)).await.unwrap();
 
         let mut request = Request::new(HttpMethod::Post, "{{BASE_URL}}/login");
-        request.headers.push(HeaderEntry::new("X-Token", "{{API_TOKEN}}"));
+        request
+            .headers
+            .push(HeaderEntry::new("X-Token", "{{API_TOKEN}}"));
         request.body = RequestBody::json(r#"{"token":"{{API_TOKEN}}"}"#);
         let resolved = service.resolve(&request).await.unwrap();
         assert_eq!(resolved.request.url, "http://localhost:3000/login");
@@ -221,16 +220,20 @@ mod tests {
         let service = service().await;
         let environment = service.create("Dev").await.unwrap();
         service
-            .save_variables(
-                environment.id,
-                &[EnvironmentVariable::new("A", "1")],
-            )
+            .save_variables(environment.id, &[EnvironmentVariable::new("A", "1")])
             .await
             .unwrap();
         let copy = service.duplicate(environment.id, "Staging").await.unwrap();
         let copy = service.get(copy.id).await.unwrap();
         assert_eq!(copy.variables.len(), 1);
-        assert_ne!(copy.variables[0].id, environment.variables.first().map(|v| v.id).unwrap_or_default());
+        assert_ne!(
+            copy.variables[0].id,
+            environment
+                .variables
+                .first()
+                .map(|v| v.id)
+                .unwrap_or_default()
+        );
     }
 
     #[tokio::test]
@@ -275,11 +278,20 @@ mod tests {
         let dev = service.create("Dev").await.unwrap();
         let prod = service.create("Prod").await.unwrap();
         service
-            .save_variables(dev.id, &[EnvironmentVariable::new("BASE_URL", "http://dev.local")])
+            .save_variables(
+                dev.id,
+                &[EnvironmentVariable::new("BASE_URL", "http://dev.local")],
+            )
             .await
             .unwrap();
         service
-            .save_variables(prod.id, &[EnvironmentVariable::new("BASE_URL", "https://api.example.com")])
+            .save_variables(
+                prod.id,
+                &[EnvironmentVariable::new(
+                    "BASE_URL",
+                    "https://api.example.com",
+                )],
+            )
             .await
             .unwrap();
         let request = Request::new(HttpMethod::Get, "{{BASE_URL}}/health");

@@ -8,9 +8,7 @@
 //! - `\{{` escapes a literal `{{` and the backslash is dropped.
 //! - The caller's request is never modified; a resolved copy is returned.
 
-use requestlab_models::{
-    Authentication, Environment, Request, RequestBody, RequestField,
-};
+use requestlab_models::{Authentication, Environment, Request, RequestBody, RequestField};
 
 use crate::errors::{FieldError, ResolutionError, ResolutionFailure};
 
@@ -83,11 +81,9 @@ pub fn resolve_text(
                 Some(variable) if !variable.enabled => errors.push(ResolutionError::Disabled {
                     name: name.to_string(),
                 }),
-                Some(variable) if variable.key.trim().is_empty() => {
-                    errors.push(ResolutionError::Malformed(format!(
-                        "'{name}' is not a valid variable name"
-                    )))
-                }
+                Some(variable) if variable.key.trim().is_empty() => errors.push(
+                    ResolutionError::Malformed(format!("'{name}' is not a valid variable name")),
+                ),
                 Some(variable) => {
                     out.push_str(&variable.value);
                     if !used.iter().any(|existing| existing == name) {
@@ -120,10 +116,10 @@ pub fn resolve_request(
     let mut variables: Vec<String> = Vec::new();
     let mut resolved = request.clone();
 
-    let mut push = |field: RequestField,
-                    result: Result<Resolution, Vec<ResolutionError>>,
-                    problems: &mut Vec<FieldError>,
-                    variables: &mut Vec<String>|
+    let push = |field: RequestField,
+                result: Result<Resolution, Vec<ResolutionError>>,
+                problems: &mut Vec<FieldError>,
+                variables: &mut Vec<String>|
      -> Option<String> {
         match result {
             Ok(resolution) => {
@@ -393,7 +389,9 @@ mod tests {
         environment
             .variables
             .push(EnvironmentVariable::new("A", "{{B}}"));
-        environment.variables.push(EnvironmentVariable::new("B", "value"));
+        environment
+            .variables
+            .push(EnvironmentVariable::new("B", "value"));
         let resolution = resolve_text("{{A}}", &environment).unwrap();
         assert_eq!(resolution.value, "{{B}}");
     }
@@ -407,9 +405,7 @@ mod tests {
         request
             .headers
             .push(HeaderEntry::new("X-Version", "{{API_VERSION}}"));
-        request
-            .headers
-            .push(HeaderEntry::new("X-Off", "{{OFF}}"));
+        request.headers.push(HeaderEntry::new("X-Off", "{{OFF}}"));
         // A disabled header is skipped, so its placeholder is not an error.
         request.headers[1].enabled = false;
         request.body = RequestBody::json(r#"{"version":"{{API_VERSION}}"}"#);
@@ -418,16 +414,10 @@ mod tests {
         };
 
         let resolved = resolve_request(&request, &environment()).unwrap();
-        assert_eq!(
-            resolved.request.url,
-            "http://localhost:3000/v1/items"
-        );
+        assert_eq!(resolved.request.url, "http://localhost:3000/v1/items");
         assert_eq!(resolved.request.query_params[0].value, "tok_123");
         assert_eq!(resolved.request.headers[0].value, "v1");
-        assert_eq!(
-            resolved.request.body.text(),
-            Some(r#"{"version":"v1"}"#)
-        );
+        assert_eq!(resolved.request.body.text(), Some(r#"{"version":"v1"}"#));
         assert_eq!(
             resolved.request.authentication,
             Authentication::Bearer {
@@ -442,7 +432,9 @@ mod tests {
     #[test]
     fn collects_problems_per_field() {
         let mut request = Request::new(HttpMethod::Get, "{{NOPE_URL}}");
-        request.headers.push(HeaderEntry::new("X", "{{NOPE_HEADER}}"));
+        request
+            .headers
+            .push(HeaderEntry::new("X", "{{NOPE_HEADER}}"));
         let failure = resolve_request(&request, &environment()).unwrap_err();
         assert_eq!(failure.problems.len(), 2);
         assert_eq!(

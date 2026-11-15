@@ -1,17 +1,15 @@
 //! Sidebar: collections tree, request history and environment variables.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, Context, IntoElement, SharedString};
 use requestlab_core::EnvironmentError;
 use requestlab_models::{
-    EnvironmentVariable, HistoryStatusFilter, HttpMethod, CollectionNode, CollectionTree,
+    CollectionNode, CollectionTree, EnvironmentVariable, HistoryStatusFilter, HttpMethod,
 };
 use uuid::Uuid;
 
-use crate::app_view::{
-    AppView, DestructiveAction, Dialog, PromptAction, SidebarSection,
-};
+use crate::app_view::{AppView, DestructiveAction, Dialog, PromptAction, SidebarSection};
+use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant, ToastKind};
 use crate::theme::{radius, space, text, SIDEBAR_WIDTH};
 
@@ -41,30 +39,28 @@ impl AppView {
             );
 
         if let Some((glyph, tooltip)) = header_action {
-            header = header.child(
-                components::icon_button(&theme, glyph).on_click(cx.listener(
-                    move |view, _: &gpui::ClickEvent, _window, cx| {
-                        let action = match view.sidebar {
-                            SidebarSection::Collections => PromptAction::NewCollection,
-                            _ => PromptAction::NewEnvironment,
-                        };
-                        view.open_dialog(
-                            Dialog::Prompt {
-                                title: tooltip.to_string(),
-                                hint: if view.sidebar == SidebarSection::Collections {
-                                    "Collection name"
-                                } else {
-                                    "Environment name"
-                                }
-                                .to_string(),
-                                action,
-                                initial: String::new(),
-                            },
-                            cx,
-                        );
-                    },
-                )),
-            );
+            header = header.child(components::icon_button(&theme, glyph).on_click(cx.listener(
+                move |view, _: &gpui::ClickEvent, _window, cx| {
+                    let action = match view.sidebar {
+                        SidebarSection::Collections => PromptAction::NewCollection,
+                        _ => PromptAction::NewEnvironment,
+                    };
+                    view.open_dialog(
+                        Dialog::Prompt {
+                            title: tooltip.to_string(),
+                            hint: if view.sidebar == SidebarSection::Collections {
+                                "Collection name"
+                            } else {
+                                "Environment name"
+                            }
+                            .to_string(),
+                            action,
+                            initial: String::new(),
+                        },
+                        cx,
+                    );
+                },
+            )));
         }
 
         let body: gpui::AnyElement = match self.sidebar {
@@ -88,7 +84,12 @@ impl AppView {
 
     fn render_collections(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
-        let mut list = div().flex().flex_col().flex_1().min_h(px(0.0)).overflow_scroll();
+        let mut list = div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h(px(0.0))
+            .overflow_scroll();
 
         if self.collections.is_empty() {
             list = list.child(components::empty_state(
@@ -120,6 +121,10 @@ impl AppView {
         let collection_id = tree.collection.id;
         let expanded = self.expanded_collections.contains(&collection_id);
         let name = tree.collection.name.clone();
+        let name_new_folder = name.clone();
+        let name_rename = name.clone();
+        let name_duplicate = name.clone();
+        let name_delete = name.clone();
         let count = tree.all_requests().len();
 
         let mut block = div().flex().flex_col();
@@ -160,7 +165,7 @@ impl AppView {
                     move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Prompt {
-                                title: format!("New folder in {name}"),
+                                title: format!("New folder in {name_new_folder}"),
                                 hint: "Folder name".to_string(),
                                 action: PromptAction::NewFolder {
                                     collection_id,
@@ -179,7 +184,7 @@ impl AppView {
                                 title: "Rename collection".to_string(),
                                 hint: "Collection name".to_string(),
                                 action: PromptAction::RenameCollection(collection_id),
-                                initial: name.clone(),
+                                initial: name_rename.clone(),
                             },
                             cx,
                         );
@@ -192,7 +197,7 @@ impl AppView {
                                 title: "Duplicate collection".to_string(),
                                 hint: "New name".to_string(),
                                 action: PromptAction::DuplicateCollection(collection_id),
-                                initial: format!("{name} copy"),
+                                initial: format!("{name_duplicate} copy"),
                             },
                             cx,
                         );
@@ -204,7 +209,7 @@ impl AppView {
                             Dialog::Confirm {
                                 title: "Delete collection".to_string(),
                                 message: format!(
-                                    "Delete \"{name}\" with all of its folders and saved requests? This cannot be undone."
+                                    "Delete \"{name_delete}\" with all of its folders and saved requests? This cannot be undone."
                                 ),
                                 action: DestructiveAction::DeleteCollection(collection_id),
                             },
@@ -253,7 +258,11 @@ impl AppView {
                     .pr(space::sm())
                     .hover(move |style| style.bg(theme.hover))
                     .cursor(gpui::CursorStyle::PointingHand)
-                    .child(components::method_chip(&theme, method).min_w(px(38.0)).h(px(16.0)))
+                    .child(
+                        components::method_chip(&theme, method)
+                            .min_w(px(38.0))
+                            .h(px(16.0)),
+                    )
                     .child(
                         div()
                             .flex_1()
@@ -280,22 +289,18 @@ impl AppView {
                             );
                         },
                     )))
-                    .on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
-                            view.open_saved_request(
-                                saved_id,
-                                collection_id,
-                                folder_id,
-                                cx,
-                            );
-                        },
-                    )),
+                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                        view.open_saved_request(saved_id, collection_id, folder_id, cx);
+                    })),
             );
         }
 
         for child in &node.children {
             let folder_id = child.folder.as_ref().map(|folder| folder.id);
             let folder_name = child.name().to_string();
+            let folder_new = folder_name.clone();
+            let folder_rename = folder_name.clone();
+            let folder_delete = folder_name.clone();
             let expanded = folder_id.is_some_and(|id| self.expanded_folders.contains(&id));
             let request_count = child.request_count();
 
@@ -336,7 +341,7 @@ impl AppView {
                         move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
-                                    title: format!("New folder in {folder_name}"),
+                                    title: format!("New folder in {folder_new}"),
                                     hint: "Folder name".to_string(),
                                     action: PromptAction::NewFolder {
                                         collection_id,
@@ -355,7 +360,7 @@ impl AppView {
                                     title: "Rename folder".to_string(),
                                     hint: "Folder name".to_string(),
                                     action: PromptAction::RenameFolder(folder_id),
-                                    initial: folder_name.clone(),
+                                    initial: folder_rename.clone(),
                                 },
                                 cx,
                             );
@@ -367,7 +372,7 @@ impl AppView {
                                 Dialog::Confirm {
                                     title: "Delete folder".to_string(),
                                     message: format!(
-                                        "Delete \"{folder_name}\" and everything inside it?"
+                                        "Delete \"{folder_delete}\" and everything inside it?"
                                     ),
                                     action: DestructiveAction::DeleteFolder(folder_id),
                                 },
@@ -476,7 +481,12 @@ impl AppView {
                 ),
         );
 
-        let mut list = div().flex().flex_col().flex_1().min_h(px(0.0)).overflow_scroll();
+        let mut list = div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h(px(0.0))
+            .overflow_scroll();
         if self.history.is_empty() {
             list = list.child(components::empty_state(
                 &theme,
@@ -506,7 +516,11 @@ impl AppView {
                     .border_color(theme.border)
                     .hover(move |style| style.bg(theme.hover))
                     .cursor(gpui::CursorStyle::PointingHand)
-                    .child(components::method_chip(&theme, method).min_w(px(38.0)).h(px(16.0)))
+                    .child(
+                        components::method_chip(&theme, method)
+                            .min_w(px(38.0))
+                            .h(px(16.0)),
+                    )
                     .child(
                         div()
                             .flex()
@@ -569,22 +583,20 @@ impl AppView {
             .min_h(px(0.0))
             .child(filters)
             .child(list)
-            .child(
-                div().p(space::sm()).child(
-                    components::button(&theme, "Clear history", ButtonVariant::Ghost).on_click(
-                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                            view.open_dialog(
-                                Dialog::Confirm {
-                                    title: "Clear history".to_string(),
-                                    message: "Delete every recorded request attempt?".to_string(),
-                                    action: DestructiveAction::ClearHistory,
-                                },
-                                cx,
-                            );
-                        }),
-                    ),
+            .child(div().p(space::sm()).child(
+                components::button(&theme, "Clear history", ButtonVariant::Ghost).on_click(
+                    cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                        view.open_dialog(
+                            Dialog::Confirm {
+                                title: "Clear history".to_string(),
+                                message: "Delete every recorded request attempt?".to_string(),
+                                action: DestructiveAction::ClearHistory,
+                            },
+                            cx,
+                        );
+                    }),
                 ),
-            )
+            ))
     }
 
     fn render_environments(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -602,6 +614,9 @@ impl AppView {
         for environment in &self.environments {
             let id = environment.id;
             let name = environment.name.clone();
+            let env_rename = name.clone();
+            let env_duplicate = name.clone();
+            let env_delete = name.clone();
             let active = self.active_environment == Some(id);
             let selected = self.env_selected == Some(id);
             let variable_count = environment.variables.len();
@@ -615,12 +630,11 @@ impl AppView {
                     .when(selected, |style| style.bg(theme.active))
                     .hover(move |style| style.bg(theme.hover))
                     .cursor(gpui::CursorStyle::PointingHand)
-                    .child(
-                        div()
-                            .size(px(6.0))
-                            .rounded(px(3.0))
-                            .bg(if active { theme.success } else { theme.border_strong }),
-                    )
+                    .child(div().size(px(6.0)).rounded(px(3.0)).bg(if active {
+                        theme.success
+                    } else {
+                        theme.border_strong
+                    }))
                     .child(
                         div()
                             .flex_1()
@@ -648,7 +662,7 @@ impl AppView {
                                     title: "Rename environment".to_string(),
                                     hint: "Environment name".to_string(),
                                     action: PromptAction::RenameEnvironment(id),
-                                    initial: name.clone(),
+                                    initial: env_rename.clone(),
                                 },
                                 cx,
                             );
@@ -661,7 +675,7 @@ impl AppView {
                                     title: "Duplicate environment".to_string(),
                                     hint: "New name".to_string(),
                                     action: PromptAction::DuplicateEnvironment(id),
-                                    initial: format!("{name} copy"),
+                                    initial: format!("{env_duplicate} copy"),
                                 },
                                 cx,
                             );
@@ -672,7 +686,7 @@ impl AppView {
                             view.open_dialog(
                                 Dialog::Confirm {
                                     title: "Delete environment".to_string(),
-                                    message: format!("Delete \"{name}\" and its variables?"),
+                                    message: format!("Delete \"{env_delete}\" and its variables?"),
                                     action: DestructiveAction::DeleteEnvironment(id),
                                 },
                                 cx,
@@ -702,9 +716,11 @@ impl AppView {
                     .child(
                         components::button(&theme, "Save", ButtonVariant::Secondary)
                             .h(px(22.0))
-                            .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                                view.save_environment_variables(selected, cx);
-                            })),
+                            .on_click(cx.listener(
+                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.save_environment_variables(selected, cx);
+                                },
+                            )),
                     ),
             );
 
@@ -719,7 +735,8 @@ impl AppView {
                         .gap(px(3.0))
                         .child(components::toggle(&theme, enabled).on_click(cx.listener(
                             move |view, _: &gpui::ClickEvent, _window, cx| {
-                                if let Some(row) = view.env_rows.iter_mut().find(|r| r.id == row_id) {
+                                if let Some(row) = view.env_rows.iter_mut().find(|r| r.id == row_id)
+                                {
                                     row.enabled = !row.enabled;
                                 }
                                 cx.notify();
@@ -801,12 +818,10 @@ impl AppView {
                     .child(
                         components::button(&theme, "＋ Add", ButtonVariant::Ghost)
                             .h(px(22.0))
-                            .on_click(cx.listener(
-                                |view, _: &gpui::ClickEvent, _window, cx| {
-                                    view.push_env_row(cx);
-                                    cx.notify();
-                                },
-                            )),
+                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                view.push_env_row(cx);
+                                cx.notify();
+                            })),
                     )
                     .child(
                         div()
@@ -829,11 +844,7 @@ impl AppView {
 
     // -------------------------------------------------------------- mutations
 
-    pub(crate) fn set_active_environment(
-        &mut self,
-        id: Option<Uuid>,
-        cx: &mut Context<Self>,
-    ) {
+    pub(crate) fn set_active_environment(&mut self, id: Option<Uuid>, cx: &mut Context<Self>) {
         let service = self.service.clone();
         self.spawn_core(
             cx,
@@ -875,7 +886,10 @@ impl AppView {
         self.spawn_core(
             cx,
             async move {
-                service.environments().save_variables(id, &variables).await?;
+                service
+                    .environments()
+                    .save_variables(id, &variables)
+                    .await?;
                 Ok::<_, EnvironmentError>(())
             },
             move |this, result, cx| {
@@ -926,7 +940,11 @@ impl AppView {
                         Ok::<_, requestlab_core::CollectionError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Collection deleted", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Collection deleted",
+                            cx,
+                        );
                         this.reload_collections(cx);
                     },
                 );
@@ -952,7 +970,11 @@ impl AppView {
                         Ok::<_, requestlab_core::CollectionError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Request deleted", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Request deleted",
+                            cx,
+                        );
                         this.reload_collections(cx);
                     },
                 );
@@ -962,7 +984,11 @@ impl AppView {
                     cx,
                     async move { service.delete_history_entry(id).await },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "History entry removed", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "History entry removed",
+                            cx,
+                        );
                         this.reload_history(cx);
                     },
                 );
@@ -972,7 +998,11 @@ impl AppView {
                     cx,
                     async move { service.clear_history().await },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "History cleared", cx);
+                        this.finish_simple(
+                            result.map(|_| ()).map_err(|e| e.to_string()),
+                            "History cleared",
+                            cx,
+                        );
                         this.reload_history(cx);
                     },
                 );
@@ -985,7 +1015,11 @@ impl AppView {
                         Ok::<_, EnvironmentError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Environment deleted", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Environment deleted",
+                            cx,
+                        );
                         this.env_selected = None;
                         this.reload_environments(cx);
                     },
@@ -1022,7 +1056,10 @@ impl AppView {
                         match result {
                             Ok(collection) => {
                                 this.expanded_collections.insert(collection.id);
-                                this.toast = Some((format!("Created {}", collection.name), ToastKind::Success));
+                                this.toast = Some((
+                                    format!("Created {}", collection.name),
+                                    ToastKind::Success,
+                                ));
                                 this.reload_collections(cx);
                             }
                             Err(error) => this.toast = Some((format!("{error}"), ToastKind::Error)),
@@ -1058,7 +1095,11 @@ impl AppView {
                         Ok::<_, requestlab_core::CollectionError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Collection renamed", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Collection renamed",
+                            cx,
+                        );
                         this.reload_collections(cx);
                     },
                 );
@@ -1083,7 +1124,8 @@ impl AppView {
                                 if let Some(parent) = folder.parent_id {
                                     this.expanded_folders.insert(parent);
                                 }
-                                this.toast = Some(("Folder created".to_string(), ToastKind::Success));
+                                this.toast =
+                                    Some(("Folder created".to_string(), ToastKind::Success));
                                 this.reload_collections(cx);
                             }
                             Err(error) => this.toast = Some((format!("{error}"), ToastKind::Error)),
@@ -1117,7 +1159,11 @@ impl AppView {
                         Ok::<_, requestlab_core::CollectionError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Request renamed", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Request renamed",
+                            cx,
+                        );
                         this.reload_collections(cx);
                     },
                 );
@@ -1130,7 +1176,11 @@ impl AppView {
                         Ok::<_, EnvironmentError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Environment renamed", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Environment renamed",
+                            cx,
+                        );
                         this.reload_environments(cx);
                     },
                 );
@@ -1143,7 +1193,11 @@ impl AppView {
                         Ok::<_, EnvironmentError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Environment duplicated", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Environment duplicated",
+                            cx,
+                        );
                         this.reload_environments(cx);
                     },
                 );
@@ -1152,11 +1206,18 @@ impl AppView {
                 self.spawn_core(
                     cx,
                     async move {
-                        service.collections().duplicate_collection(id, &value).await?;
+                        service
+                            .collections()
+                            .duplicate_collection(id, &value)
+                            .await?;
                         Ok::<_, requestlab_core::CollectionError>(())
                     },
                     |this, result, cx| {
-                        this.finish_simple(result.map_err(|e| e.to_string()), "Collection duplicated", cx);
+                        this.finish_simple(
+                            result.map_err(|e| e.to_string()),
+                            "Collection duplicated",
+                            cx,
+                        );
                         this.reload_collections(cx);
                     },
                 );

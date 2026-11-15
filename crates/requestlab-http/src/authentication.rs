@@ -10,8 +10,7 @@ use requestlab_models::{ApiKeyLocation, Authentication};
 ///
 /// Implemented locally to avoid pulling a dependency in for one small function.
 pub fn base64_encode(input: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     for chunk in input.chunks(3) {
         let b0 = chunk[0] as u32;
@@ -97,10 +96,7 @@ mod tests {
         assert_eq!(base64_encode(b"foo"), "Zm9v");
         assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
         // RFC 4648 test vector
-        assert_eq!(
-            base64_encode(b"user:password"),
-            "dXNlcjpwYXNzd29yZA=="
-        );
+        assert_eq!(base64_encode(b"user:password"), "dXNlcjpwYXNzd29yZA==");
     }
 
     #[test]
@@ -149,9 +145,7 @@ mod tests {
     #[test]
     fn incomplete_credentials_are_ignored() {
         assert_eq!(
-            apply(&Authentication::Bearer {
-                token: "  ".into()
-            }),
+            apply(&Authentication::Bearer { token: "  ".into() }),
             AppliedAuth::default()
         );
         assert_eq!(

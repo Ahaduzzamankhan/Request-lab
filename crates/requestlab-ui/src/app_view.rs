@@ -5,14 +5,11 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, AppContext, Context, Entity, IntoElement, Render, SharedString, Window};
 use requestlab_core::{
-    cancellation_channel, AppService, Canceller, EnvironmentError, ExecutionError,
-    ExecutionOutcome,
+    cancellation_channel, AppService, Canceller, EnvironmentError, ExecutionError, ExecutionOutcome,
 };
 use requestlab_models::{
     human_duration, CollectionTree, Environment, HistoryEntry, HistoryQuery, HistoryStatusFilter,
@@ -21,8 +18,9 @@ use requestlab_models::{
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
-use crate::components::{self, ButtonVariant, ToastKind};
-use crate::editor_state::{AuthKind, EditorTab, RequestEditor, SavedLocation};
+use crate::components::InteractiveExt;
+use crate::components::{self, ToastKind};
+use crate::editor_state::{RequestEditor, SavedLocation};
 use crate::input::{key_bindings, TextInput};
 use crate::json_tree;
 use crate::theme::{space, text, with_alpha, Theme, ThemeMode};
@@ -263,7 +261,12 @@ pub struct AppView {
 }
 
 impl AppView {
-    pub fn new(service: AppService, runtime: Arc<Runtime>, mode: ThemeMode, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        service: AppService,
+        runtime: Arc<Runtime>,
+        mode: ThemeMode,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let theme = Theme::for_mode(mode);
         let history_search = cx.new(|cx| TextInput::new(cx, "Search history", false));
         let dialog_input = cx.new(|cx| TextInput::new(cx, "", false));
@@ -348,15 +351,15 @@ impl AppView {
                         this.environments = snapshot.environments;
                         this.active_environment = snapshot.active_environment;
                         this.history = snapshot.history;
-                        this.theme = Theme::for_mode(ThemeMode::from_setting(
-                            &snapshot.settings.theme,
-                        ));
+                        this.theme =
+                            Theme::for_mode(ThemeMode::from_setting(&snapshot.settings.theme));
                         if let Some(environment) = this.active_environment {
                             this.load_environment(environment, cx);
                         }
                     }
                     Err(error) => {
-                        this.error_banner = Some(format!("Could not open RequestLab data: {error}"));
+                        this.error_banner =
+                            Some(format!("Could not open RequestLab data: {error}"));
                     }
                 }
                 cx.notify();
@@ -400,16 +403,15 @@ impl AppView {
                         this.active_environment = active;
                         if let Some(selected) = this.env_selected {
                             if !this.environments.iter().any(|env| env.id == selected) {
-                                this.env_selected = active.or_else(|| {
-                                    this.environments.first().map(|env| env.id)
-                                });
+                                this.env_selected =
+                                    active.or_else(|| this.environments.first().map(|env| env.id));
                                 if let Some(id) = this.env_selected {
                                     this.load_environment(id, cx);
                                 }
                             }
                         } else {
-                            this.env_selected = active
-                                .or_else(|| this.environments.first().map(|env| env.id));
+                            this.env_selected =
+                                active.or_else(|| this.environments.first().map(|env| env.id));
                             if let Some(id) = this.env_selected {
                                 this.load_environment(id, cx);
                             }
@@ -600,7 +602,8 @@ impl AppView {
                             tab.editor = editor;
                             tab.response = ResponseState::new(cx);
                         }
-                        this.toast = Some((format!("Opened {}", saved.display_name()), ToastKind::Info));
+                        this.toast =
+                            Some((format!("Opened {}", saved.display_name()), ToastKind::Info));
                     }
                     Err(error) => this.toast = Some((format!("{error}"), ToastKind::Error)),
                 }
@@ -624,6 +627,7 @@ impl AppView {
         };
         let existing = self.active_tab_ref().editor.saved;
         let service = self.service.clone();
+        let saved_name = name.clone();
         self.spawn_core(
             cx,
             async move {
@@ -654,7 +658,7 @@ impl AppView {
                                 folder_id,
                             });
                         }
-                        this.toast = Some((format!("Saved {name}"), ToastKind::Success));
+                        this.toast = Some((format!("Saved {saved_name}"), ToastKind::Success));
                         this.reload_collections(cx);
                     }
                     Err(error) => {
@@ -730,10 +734,9 @@ impl AppView {
             async move { service.set_history_limit(limit).await },
             move |this, result, cx| {
                 match result {
-                    Ok(()) => this.show_toast(
-                        format!("History limit set to {limit}"),
-                        ToastKind::Success,
-                    ),
+                    Ok(()) => {
+                        this.show_toast(format!("History limit set to {limit}"), ToastKind::Success)
+                    }
                     Err(error) => this.show_toast(format!("{error}"), ToastKind::Error),
                 }
                 this.reload_history(cx);
@@ -746,7 +749,7 @@ impl AppView {
 impl Render for AppView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
-        let content = div()
+        let mut content = div()
             .relative()
             .flex()
             .flex_col()
@@ -793,14 +796,12 @@ impl Render for AppView {
                     .text_size(text::small())
                     .text_color(theme.error)
                     .child(banner)
-                    .child(
-                        components::icon_button(&theme, "✕").on_click(cx.listener(
-                            |view, _: &gpui::ClickEvent, _window, cx| {
-                                view.error_banner = None;
-                                cx.notify();
-                            },
-                        )),
-                    ),
+                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
+                        |view, _: &gpui::ClickEvent, _window, cx| {
+                            view.error_banner = None;
+                            cx.notify();
+                        },
+                    ))),
             );
         }
 

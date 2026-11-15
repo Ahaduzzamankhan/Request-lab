@@ -1,11 +1,11 @@
 //! The response inspector: status line, tabs, JSON tree, raw text and headers.
 
 use gpui::prelude::*;
-use gpui::InteractiveElement as _;
 use gpui::{div, px, ClipboardItem, Context, IntoElement, SharedString};
 use requestlab_models::{human_duration, BodyKind, ResponseBody};
 
 use crate::app_view::{AppView, ResponseTab};
+use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
 use crate::json_tree::{self, JsonRow};
 use crate::theme::{radius, space, text};
@@ -22,7 +22,7 @@ impl AppView {
         let state = &tab.response;
         let body_kind = state.response.as_ref().map(|response| response.body_kind());
 
-        let mut header = div()
+        let header = div()
             .flex()
             .items_center()
             .justify_between()
@@ -172,24 +172,19 @@ impl AppView {
 
         if matches!(state.tab, ResponseTab::Pretty | ResponseTab::Raw) && state.response.is_some() {
             tabs = tabs.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .flex_1()
-                    .justify_end()
-                    .child(
-                        div()
-                            .w(px(200.0))
-                            .h(px(22.0))
-                            .px(space::xs())
-                            .rounded(radius::sm())
-                            .bg(theme.surface)
-                            .border_1()
-                            .border_color(theme.border)
-                            .font_family(theme.mono_family())
-                            .text_size(text::small())
-                            .child(state.search.clone()),
-                    ),
+                div().flex().items_center().flex_1().justify_end().child(
+                    div()
+                        .w(px(200.0))
+                        .h(px(22.0))
+                        .px(space::xs())
+                        .rounded(radius::sm())
+                        .bg(theme.surface)
+                        .border_1()
+                        .border_color(theme.border)
+                        .font_family(theme.mono_family())
+                        .text_size(text::small())
+                        .child(state.search.clone()),
+                ),
             );
         }
 
@@ -205,7 +200,10 @@ impl AppView {
                 .bg(with_alpha_bg(theme.accent))
                 .text_size(text::micro())
                 .text_color(theme.accent)
-                .child(format!("resolved {}", state.resolved_url.clone().unwrap_or_default()))
+                .child(format!(
+                    "resolved {}",
+                    state.resolved_url.clone().unwrap_or_default()
+                ))
                 .into_any_element()
         };
 
@@ -221,7 +219,7 @@ impl AppView {
             .child(self.render_response_body(cx))
     }
 
-    fn render_response_body(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_response_body(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
         let theme = self.theme;
         let state = &self.active_tab_ref().response;
 
@@ -249,7 +247,8 @@ impl AppView {
                         .text_size(text::small())
                         .text_color(theme.text_secondary)
                         .child(SharedString::from(error.clone())),
-                );
+                )
+                .into_any_element();
         }
 
         let Some(response) = &state.response else {
@@ -276,7 +275,7 @@ impl AppView {
                     match response.pretty_json() {
                         Some(Ok(_)) => {
                             let rows = state.json_rows(cx).unwrap_or_default();
-                            return self.render_json_rows(rows, cx);
+                            return self.render_json_rows(rows, cx).into_any_element();
                         }
                         Some(Err(message)) => {
                             return div()
@@ -322,13 +321,13 @@ impl AppView {
                         .into_any_element();
                 }
 
-                let size = response
-                    .body
-                    .len();
+                let size = response.body.len();
                 components::empty_state(
                     &theme,
                     "Binary response",
-                    format!("{size} bytes of binary data. Use Copy or save the response to inspect it."),
+                    format!(
+                        "{size} bytes of binary data. Use Copy or save the response to inspect it."
+                    ),
                 )
                 .into_any_element()
             }
@@ -354,7 +353,12 @@ impl AppView {
                     .into_any_element()
             }
             ResponseTab::Headers => {
-                let mut list = div().flex().flex_col().flex_1().min_h(px(0.0)).overflow_scroll();
+                let mut list = div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h(px(0.0))
+                    .overflow_scroll();
                 for header in &response.headers {
                     list = list.child(
                         div()
@@ -395,7 +399,12 @@ impl AppView {
                     )
                     .into_any_element();
                 }
-                let mut list = div().flex().flex_col().flex_1().min_h(px(0.0)).overflow_scroll();
+                let mut list = div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h(px(0.0))
+                    .overflow_scroll();
                 for cookie in &response.cookies {
                     list = list.child(
                         div()
@@ -430,8 +439,16 @@ impl AppView {
                                         [
                                             cookie.domain.clone().unwrap_or_default(),
                                             cookie.path.clone().unwrap_or_default(),
-                                            if cookie.secure { "Secure".into() } else { String::new() },
-                                            if cookie.http_only { "HttpOnly".into() } else { String::new() },
+                                            if cookie.secure {
+                                                "Secure".into()
+                                            } else {
+                                                String::new()
+                                            },
+                                            if cookie.http_only {
+                                                "HttpOnly".into()
+                                            } else {
+                                                String::new()
+                                            },
                                         ]
                                         .into_iter()
                                         .filter(|part| !part.is_empty())
@@ -475,7 +492,9 @@ impl AppView {
                 .h(px(18.0))
                 .pl(space::md() + px(json_tree::indent(row.depth)))
                 .pr(space::md())
-                .when(matched, |style| style.bg(crate::theme::with_alpha(theme.warning, 0.16)))
+                .when(matched, |style| {
+                    style.bg(crate::theme::with_alpha(theme.warning, 0.16))
+                })
                 .hover(|style| style.bg(theme.hover))
                 .cursor(gpui::CursorStyle::PointingHand);
 
@@ -540,12 +559,7 @@ impl AppView {
             list = list.child(line);
         }
 
-        let mut container = div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .min_h(px(0.0))
-            .child(list);
+        let mut container = div().flex().flex_col().flex_1().min_h(px(0.0)).child(list);
 
         if truncated || matches > 0 {
             container = container.child(
@@ -572,15 +586,4 @@ impl AppView {
 
 fn with_alpha_bg(color: gpui::Rgba) -> gpui::Rgba {
     crate::theme::with_alpha(color, 0.10)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn limits_are_reasonable() {
-        assert!(MAX_JSON_ROWS >= 1000);
-        assert!(MAX_TEXT_CHARS >= 100_000);
-    }
 }

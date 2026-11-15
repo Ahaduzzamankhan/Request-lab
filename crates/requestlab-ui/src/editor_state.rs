@@ -205,19 +205,20 @@ impl RequestEditor {
     /// Replace the editor's contents with `request`.
     pub fn load(&mut self, request: &Request, cx: &mut App) {
         self.request_id = request.id;
-        self.name.update(cx, |input, _| input.set_content(request.name.clone()));
-        self.url.update(cx, |input, _| input.set_content(request.url.clone()));
+        self.name
+            .update(cx, |input, _| input.set_content(request.name.clone()));
+        self.url
+            .update(cx, |input, _| input.set_content(request.url.clone()));
         self.method = request.method;
 
         self.params = request
             .query_params
             .iter()
-            .map(|param| {
-                KeyValueRow::new(cx, &param.key, &param.value, param.enabled, "Parameter")
-            })
+            .map(|param| KeyValueRow::new(cx, &param.key, &param.value, param.enabled, "Parameter"))
             .collect();
         if self.params.is_empty() {
-            self.params.push(KeyValueRow::new(cx, "", "", true, "Parameter"));
+            self.params
+                .push(KeyValueRow::new(cx, "", "", true, "Parameter"));
         }
 
         self.headers = request
@@ -228,7 +229,8 @@ impl RequestEditor {
             })
             .collect();
         if self.headers.is_empty() {
-            self.headers.push(KeyValueRow::new(cx, "", "", true, "Header"));
+            self.headers
+                .push(KeyValueRow::new(cx, "", "", true, "Header"));
         }
 
         self.body_kind = request.body.kind();
@@ -238,14 +240,16 @@ impl RequestEditor {
                 self.form.clear();
             }
             RequestBody::Json { content } => {
-                self.body.update(cx, |input, _| input.set_content(content.clone()));
+                self.body
+                    .update(cx, |input, _| input.set_content(content.clone()));
                 self.form.clear();
             }
             RequestBody::Raw {
                 content,
                 content_type,
             } => {
-                self.body.update(cx, |input, _| input.set_content(content.clone()));
+                self.body
+                    .update(cx, |input, _| input.set_content(content.clone()));
                 self.body_content_type
                     .update(cx, |input, _| input.set_content(content_type.clone()));
                 self.form.clear();
@@ -271,11 +275,14 @@ impl RequestEditor {
                 self.auth_secondary.update(cx, |i, _| i.set_content(""));
             }
             Authentication::Basic { username, password } => {
-                self.auth_primary.update(cx, |i, _| i.set_content(username.clone()));
-                self.auth_secondary.update(cx, |i, _| i.set_content(password.clone()));
+                self.auth_primary
+                    .update(cx, |i, _| i.set_content(username.clone()));
+                self.auth_secondary
+                    .update(cx, |i, _| i.set_content(password.clone()));
             }
             Authentication::Bearer { token } => {
-                self.auth_primary.update(cx, |i, _| i.set_content(token.clone()));
+                self.auth_primary
+                    .update(cx, |i, _| i.set_content(token.clone()));
                 self.auth_secondary.update(cx, |i, _| i.set_content(""));
             }
             Authentication::ApiKey {
@@ -283,8 +290,10 @@ impl RequestEditor {
                 value,
                 location,
             } => {
-                self.auth_primary.update(cx, |i, _| i.set_content(key.clone()));
-                self.auth_secondary.update(cx, |i, _| i.set_content(value.clone()));
+                self.auth_primary
+                    .update(cx, |i, _| i.set_content(key.clone()));
+                self.auth_secondary
+                    .update(cx, |i, _| i.set_content(value.clone()));
                 self.api_key_location = *location;
             }
         }
@@ -322,11 +331,9 @@ impl RequestEditor {
 
         request.body = match self.body_kind {
             RequestBodyKind::None => RequestBody::None,
-            RequestBodyKind::Json => {
-                RequestBody::Json {
-                    content: self.body.read(cx).content().to_string(),
-                }
-            }
+            RequestBodyKind::Json => RequestBody::Json {
+                content: self.body.read(cx).content().to_string(),
+            },
             RequestBodyKind::Raw => {
                 let content_type = self.body_content_type.read(cx).content().to_string();
                 RequestBody::Raw {
@@ -338,41 +345,35 @@ impl RequestEditor {
                     },
                 }
             }
-            RequestBodyKind::FormUrlEncoded => {
-                RequestBody::FormUrlEncoded {
-                    fields: self
-                        .form
-                        .iter()
-                        .filter(|row| row.is_populated(cx))
-                        .map(|row| QueryParameter {
-                            id: row.id,
-                            key: row.key_text(cx),
-                            value: row.value_text(cx),
-                            enabled: row.enabled,
-                        })
-                        .collect(),
-                }
-            }
+            RequestBodyKind::FormUrlEncoded => RequestBody::FormUrlEncoded {
+                fields: self
+                    .form
+                    .iter()
+                    .filter(|row| row.is_populated(cx))
+                    .map(|row| QueryParameter {
+                        id: row.id,
+                        key: row.key_text(cx),
+                        value: row.value_text(cx),
+                        enabled: row.enabled,
+                    })
+                    .collect(),
+            },
         };
 
         let primary = self.auth_primary.read(cx).content().to_string();
         let secondary = self.auth_secondary.read(cx).content().to_string();
         request.authentication = match self.auth_kind {
             AuthKind::None => Authentication::None,
-            AuthKind::Basic => {
-                Authentication::Basic {
-                    username: primary,
-                    password: secondary,
-                }
-            }
+            AuthKind::Basic => Authentication::Basic {
+                username: primary,
+                password: secondary,
+            },
             AuthKind::Bearer => Authentication::Bearer { token: primary },
-            AuthKind::ApiKey => {
-                Authentication::ApiKey {
-                    key: primary,
-                    value: secondary,
-                    location: self.api_key_location,
-                }
-            }
+            AuthKind::ApiKey => Authentication::ApiKey {
+                key: primary,
+                value: secondary,
+                location: self.api_key_location,
+            },
         };
 
         request
@@ -463,9 +464,7 @@ mod tests {
             AuthKind::None
         );
         assert_eq!(
-            AuthKind::from_authentication(&Authentication::Bearer {
-                token: "t".into()
-            }),
+            AuthKind::from_authentication(&Authentication::Bearer { token: "t".into() }),
             AuthKind::Bearer
         );
         assert_eq!(AuthKind::ApiKey.primary_label(), "Key");
