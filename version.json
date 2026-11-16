@@ -1,6 +1,6 @@
 {
   "name": "RequestLab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "channel": "stable",
   "platforms": ["windows-x64"],
   "artifacts": {
