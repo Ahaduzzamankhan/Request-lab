@@ -1,14 +1,19 @@
-#include <winres.h>
+// Windows resources for requestlab.exe.
+//
+// Only resource-language keywords and numbers are used, so rc.exe needs no
+// SDK headers on its include path:
+//   0x00040004 = VOS_NT_WINDOWS32, 0x00000001 = VFT_APP.
 
-// Taskbar and Explorer icon for requestlab.exe.
-IDI_REQUESTLAB ICON "requestlab.ico"
-VS_VERSION_INFO VERSIONINFO
+// Resource id 1 is the executable's icon: Explorer and the taskbar use it.
+1 ICON "requestlab.ico"
+
+1 VERSIONINFO
  FILEVERSION 0,1,1,0
  PRODUCTVERSION 0,1,1,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
- FILEOS VOS_NT_WINDOWS32
- FILETYPE VFT_APP
+ FILEOS 0x00040004L
+ FILETYPE 0x00000001L
  FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"

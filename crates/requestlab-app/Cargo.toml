@@ -23,5 +23,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 
-[target.'cfg(windows)'.build-dependencies]
+[build-dependencies]
+# Compiles the Windows icon/version resource; a no-op on other hosts.
 embed-resource = "3"
