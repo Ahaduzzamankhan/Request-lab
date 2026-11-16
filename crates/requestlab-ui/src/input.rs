@@ -742,9 +742,16 @@ impl Element for TextElement {
         let line_height = window.line_height();
         let selection = input.selected_range.clone();
         let cursor_position = input.cursor_offset();
+        // A focused empty field shows the caret, so the placeholder must step
+        // aside: otherwise there is no typing indicator at all.
+        let focused = input.focus_handle.is_focused(window);
 
         let (lines, show_placeholder): (Vec<SharedString>, bool) = if content.is_empty() {
-            (vec![input.placeholder.clone()], true)
+            if focused {
+                (vec![SharedString::default()], false)
+            } else {
+                (vec![input.placeholder.clone()], true)
+            }
         } else {
             (
                 content

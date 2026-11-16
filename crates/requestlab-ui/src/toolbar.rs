@@ -176,7 +176,16 @@ impl AppView {
             .gap(px(2.0))
             .bg(theme.sidebar)
             .border_b_1()
-            .border_color(theme.border);
+            .border_color(theme.border)
+            .on_mouse_down(
+                gpui::MouseButton::Right,
+                cx.listener(|view, event: &gpui::MouseDownEvent, _window, cx| {
+                    let index = view.active_tab;
+                    let items = view.tab_menu_items(index);
+                    view.open_context_menu(event.position, "Tab", items, cx);
+                    cx.stop_propagation();
+                }),
+            );
 
         for (index, tab) in self.tabs.iter().enumerate() {
             let selected = index == self.active_tab;
@@ -254,15 +263,21 @@ impl AppView {
     ) -> impl IntoElement {
         let theme = self.theme;
         let tab = self.active_tab_ref();
-        let (status_label, status_color) = match &tab.response.response {
-            Some(response) => (
-                format!("{} {}", response.status, response.status_text),
-                theme.status_color(Some(response.status)),
-            ),
-            None => match (&tab.response.error_category, &tab.response.error) {
-                (Some(category), _) => (format!("{category} error"), theme.error),
-                _ => ("Ready".to_string(), theme.text_muted),
-            },
+        let sending = tab.sending;
+        let (status_label, status_color) = if sending {
+            let dots = "·".repeat((self.sending_tick % 4) as usize);
+            (format!("Sending{dots}"), theme.accent)
+        } else {
+            match &tab.response.response {
+                Some(response) => (
+                    format!("{} {}", response.status, response.status_text),
+                    theme.status_color(Some(response.status)),
+                ),
+                None => match (&tab.response.error_category, &tab.response.error) {
+                    (Some(category), _) => (format!("{category} error"), theme.error),
+                    _ => ("Ready".to_string(), theme.text_muted),
+                },
+            }
         };
         let duration = tab
             .response

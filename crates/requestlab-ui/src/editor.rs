@@ -37,6 +37,7 @@ impl AppView {
                     .h(px(28.0))
                     .px(space::sm())
                     .child(div().text_size(text::micro()).child(" ▾"))
+                    .debug_selector(|| "method-picker".to_string())
                     .on_press(
                         "editor:40",
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
@@ -76,6 +77,7 @@ impl AppView {
                 )
                 .h(px(28.0))
                 .min_w(px(72.0))
+                .debug_selector(|| "send-request".to_string())
                 .on_press(
                     "editor:76",
                     cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
@@ -94,6 +96,7 @@ impl AppView {
                     ButtonVariant::Secondary,
                 )
                 .h(px(28.0))
+                .debug_selector(|| "save-request".to_string())
                 .on_press(
                     "editor:93",
                     cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
@@ -183,7 +186,8 @@ impl AppView {
                     .flex()
                     .flex_col()
                     .h(px(196.0))
-                    .overflow_scroll()
+                    .id("editor-scroll-1")
+                    .overflow_y_scroll()
                     .bg(theme.background)
                     .child(content),
             )
@@ -369,7 +373,8 @@ impl AppView {
                         div()
                             .flex_1()
                             .min_h(px(0.0))
-                            .overflow_scroll()
+                            .id("editor-scroll-2")
+                            .overflow_y_scroll()
                             .m(space::sm())
                             .p(space::sm())
                             .rounded(radius::md())
@@ -436,7 +441,8 @@ impl AppView {
                     div()
                         .flex_1()
                         .min_h(px(0.0))
-                        .overflow_scroll()
+                        .id("editor-scroll-3")
+                        .overflow_y_scroll()
                         .m(space::sm())
                         .p(space::sm())
                         .rounded(radius::md())

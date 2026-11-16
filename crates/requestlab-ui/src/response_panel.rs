@@ -321,7 +321,7 @@ impl AppView {
                         .flex_col()
                         .flex_1()
                         .min_h(px(0.0))
-                        .overflow_scroll()
+                        .id("response-scroll-1").overflow_y_scroll()
                         .p(space::md())
                         .font_family(theme.mono_family())
                         .text_size(text::small())
@@ -364,7 +364,8 @@ impl AppView {
                     .flex_col()
                     .flex_1()
                     .min_h(px(0.0))
-                    .overflow_scroll()
+                    .id("response-scroll-2")
+                    .overflow_y_scroll()
                     .p(space::md())
                     .font_family(theme.mono_family())
                     .text_size(text::small())
@@ -378,7 +379,8 @@ impl AppView {
                     .flex_col()
                     .flex_1()
                     .min_h(px(0.0))
-                    .overflow_scroll();
+                    .id("response-scroll-3")
+                    .overflow_y_scroll();
                 for header in &response.headers {
                     list = list.child(
                         div()
@@ -424,7 +426,8 @@ impl AppView {
                     .flex_col()
                     .flex_1()
                     .min_h(px(0.0))
-                    .overflow_scroll();
+                    .id("response-scroll-4")
+                    .overflow_y_scroll();
                 for cookie in &response.cookies {
                     list = list.child(
                         div()
@@ -494,7 +497,8 @@ impl AppView {
             .flex_col()
             .flex_1()
             .min_h(px(0.0))
-            .overflow_scroll()
+            .id("response-scroll-5")
+            .overflow_y_scroll()
             .py(space::xs())
             .font_family(theme.mono_family())
             .text_size(text::small());

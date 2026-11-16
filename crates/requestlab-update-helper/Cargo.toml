@@ -10,5 +10,4 @@ name = "requestlab-update-helper"
 path = "src/main.rs"
 
 [dependencies]
-requestlab-manager = { workspace = true }
 tracing = { workspace = true }

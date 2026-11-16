@@ -80,6 +80,14 @@ impl AppView {
             .bg(theme.sidebar)
             .border_r_1()
             .border_color(theme.border)
+            .on_mouse_down(
+                gpui::MouseButton::Right,
+                cx.listener(|view, event: &gpui::MouseDownEvent, _window, cx| {
+                    let items = view.sidebar_menu_items();
+                    view.open_context_menu(event.position, "Sidebar", items, cx);
+                    cx.stop_propagation();
+                }),
+            )
             .child(header)
             .child(body)
     }
@@ -91,7 +99,8 @@ impl AppView {
             .flex_col()
             .flex_1()
             .min_h(px(0.0))
-            .overflow_scroll();
+            .id("sidebar-scroll-1")
+            .overflow_y_scroll();
 
         if self.collections.is_empty() {
             list = list.child(components::empty_state(
@@ -508,7 +517,8 @@ impl AppView {
             .flex_col()
             .flex_1()
             .min_h(px(0.0))
-            .overflow_scroll();
+            .id("sidebar-scroll-2")
+            .overflow_y_scroll();
         if self.history.is_empty() {
             list = list.child(components::empty_state(
                 &theme,

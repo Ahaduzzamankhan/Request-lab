@@ -8,8 +8,8 @@
 1 ICON "requestlab.ico"
 
 1 VERSIONINFO
- FILEVERSION 0,1,1,0
- PRODUCTVERSION 0,1,1,0
+ FILEVERSION 0,1,2,0
+ PRODUCTVERSION 0,1,2,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS 0x00040004L
@@ -22,11 +22,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "RequestLab"
             VALUE "FileDescription", "RequestLab API client"
-            VALUE "FileVersion", "0.1.1"
+            VALUE "FileVersion", "0.1.2"
             VALUE "InternalName", "requestlab"
             VALUE "OriginalFilename", "requestlab.exe"
             VALUE "ProductName", "RequestLab"
-            VALUE "ProductVersion", "0.1.1"
+            VALUE "ProductVersion", "0.1.2"
         END
     END
     BLOCK "VarFileInfo"

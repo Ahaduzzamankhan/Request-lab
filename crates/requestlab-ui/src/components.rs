@@ -28,17 +28,6 @@ pub trait InteractiveExt: gpui::InteractiveElement + gpui::Styled + Sized {
             cx.stop_propagation();
         })
     }
-
-    fn overflow_scroll(mut self) -> Self {
-        self.style().overflow.x = Some(gpui::Overflow::Scroll);
-        self.style().overflow.y = Some(gpui::Overflow::Scroll);
-        self
-    }
-
-    fn overflow_y_scroll(mut self) -> Self {
-        self.style().overflow.y = Some(gpui::Overflow::Scroll);
-        self
-    }
 }
 
 impl<T: gpui::InteractiveElement + gpui::Styled> InteractiveExt for T {}

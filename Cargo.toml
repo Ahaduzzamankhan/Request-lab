@@ -18,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 
@@ -45,6 +45,9 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = ["std"
 zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 tempfile = "3.20.0"
 
+# Windows-only: console reattachment and registry access
+windows-sys = { version = "0.59.0", features = ["Win32_Foundation", "Win32_System_Console", "Win32_Storage_FileSystem"] }
+
 # Persistence
 sqlx = { version = "0.8.5", default-features = false, features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
 
@@ -62,8 +65,8 @@ requestlab-collections = { path = "crates/requestlab-collections" }
 requestlab-environments = { path = "crates/requestlab-environments" }
 requestlab-core = { path = "crates/requestlab-core" }
 requestlab-ui = { path = "crates/requestlab-ui" }
+requestlab-cli = { path = "crates/requestlab-cli", version = "0.1.2" }
 requestlab-manager = { path = "crates/requestlab-manager" }
-requestlab-manager-ui = { path = "crates/requestlab-manager-ui" }
 
 
 [profile.release]

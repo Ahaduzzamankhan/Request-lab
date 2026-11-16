@@ -16,12 +16,16 @@ gpui_platform = { workspace = true }
 ely-gpui-component = { workspace = true }
 requestlab-ui = { workspace = true }
 requestlab-core = { workspace = true }
+requestlab-cli = { workspace = true }
 requestlab-models = { workspace = true }
 requestlab-storage = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
 
 [build-dependencies]
 # Compiles the Windows icon/version resource; a no-op on other hosts.

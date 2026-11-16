@@ -72,7 +72,7 @@ do not assume a number that has not been measured.
 ```json
 {
   "name": "RequestLab",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "channel": "stable",
   "platforms": ["windows-x64"],
   "artifacts": { "gui": "requestlab.exe", "cli": "requestlab-cli.exe" }

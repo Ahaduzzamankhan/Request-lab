@@ -7,5 +7,3 @@ description = "Shared GPUI widgets for the RequestLab installer and updater"
 
 [dependencies]
 gpui = { workspace = true }
-requestlab-ui = { workspace = true }
-requestlab-manager = { workspace = true }

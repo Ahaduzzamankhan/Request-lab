@@ -136,6 +136,7 @@ impl AppView {
                     let color = theme.method_color(method);
                     grid = grid.child(
                         components::chip(&theme, method.as_str(), color, true)
+                            .debug_selector(move || format!("method-{}", method.as_str()))
                             .h(px(30.0))
                             .px(space::md())
                             .cursor(gpui::CursorStyle::PointingHand)
@@ -261,6 +262,7 @@ impl AppView {
                             timeout == seconds,
                             None,
                         )
+                        .debug_selector(move || format!("timeout-{seconds}"))
                         .on_press(
                             "dialogs:257",
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
@@ -283,6 +285,7 @@ impl AppView {
                             history_limit == limit,
                             None,
                         )
+                        .debug_selector(move || format!("history-limit-{limit}"))
                         .on_press(
                             "dialogs:278",
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
@@ -305,6 +308,7 @@ impl AppView {
                     };
                     themes = themes.child(
                         components::tab_button(&theme, label, self.theme.mode == mode, None)
+                            .debug_selector(move || format!("theme-{}", mode.as_setting()))
                             .on_press(
                                 "dialogs:299",
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {

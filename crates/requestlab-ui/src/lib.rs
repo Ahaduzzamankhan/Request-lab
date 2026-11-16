@@ -6,6 +6,7 @@
 pub mod actions;
 pub mod app_view;
 pub mod components;
+pub mod context_menu;
 pub mod dialogs;
 pub mod editor;
 pub mod editor_state;

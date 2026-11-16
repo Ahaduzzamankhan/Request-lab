@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-16
 **Branch:** `main`
-**Version in the tree:** 0.1.1
+**Version in the tree:** 0.1.2
 
 This file is an honest snapshot of the installer / updater / CLI work: what is
 implemented and verified, what is only scaffolding, and what is still missing.
@@ -159,3 +159,49 @@ The foundation is real and tested — the release format, trust model, download,
 verification, extraction, transactional install, backup and recovery all work —
 but nothing user-facing beyond the CLI's existing commands has been built on top
 of it yet.
+
+## Round: 0.1.2 UI fixes, single executable, release packaging
+
+Done in this round (compiled and, where noted, tested on Linux):
+
+- **Caret / typing indicator.** An empty, focused text input used to keep showing
+  its placeholder, which suppressed the cursor quad entirely. The placeholder now
+  only appears while the field is unfocused, so the caret is always visible in an
+  empty focused field (`crates/requestlab-ui/src/input.rs`, prepaint).
+- **Scrolling.** The local `overflow_scroll`/`overflow_y_scroll` helpers only set
+  `Style::overflow` (clip, never scroll). They are gone; the sidebar, editor and
+  response panes use GPUI's native `StatefulInteractiveElement` scrolling with
+  stable ids.
+- **Right-click menus.** New `crates/requestlab-ui/src/context_menu.rs` renders a
+  positioned overlay with a dismissing scrim. Items are real actions: new tab,
+  close tab, choose method, save request, copy response body, clear response,
+  new collection/environment, refresh, settings and theme. Wired to the sidebar
+  and tab strip (`on_mouse_down(Right)`).
+- **Animation.** While a request is in flight the status bar shows an animated
+  `Sending·` indicator driven by a 140 ms ticker that stops when nothing is
+  sending.
+- **Debug selectors** on the method picker, method chips, timeout/history/theme
+  buttons and the menu rows so headless tests can press them.
+- **Single executable.** `crates/requestlab-cli` gained `entry::run_cli`, shared by
+  the `requestlab-cli` binary and by `requestlab.exe`. With arguments the desktop
+  binary reattaches to the parent console on Windows and runs the CLI; with none
+  it opens the window. Verified on Linux: `requestlab-cli --version` and the CLI
+  unit tests (31 passing), including `--version` through `run_cli`.
+- **Version 0.1.2** in `Cargo.toml`, `version.json`, the Windows resource and the
+  docs; `scripts/verify-version.sh` passes.
+- **Release workflow.** Now verifies `requestlab.exe --version` on the Windows
+  runner, publishes the bare executables, a zip with the single-file download and
+  `SHA256SUMS.txt`.
+
+Still outstanding (honest limits):
+
+- `crates/requestlab-{installer,updater,update-helper,manager-ui}` remain
+  scaffolded binaries with placeholder bodies. The engine is complete and tested,
+  but there is no installer/updater window yet, and the release workflow does not
+  yet emit a signed update manifest (that needs a signing key in CI secrets).
+- No Windows host and no display here: every GUI change in this round is
+  type-checked, not visually verified, and Windows-only code (console reattach,
+  registry, shortcuts) is unverified.
+- `release-windows.yml` has not been run. This environment cannot create tags or
+  dispatch workflows; it must be started from the Actions tab (or by pushing a
+  `v0.1.2` tag).

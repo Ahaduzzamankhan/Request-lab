@@ -263,6 +263,9 @@ pub struct AppView {
     pub history_status: HistoryStatusFilter,
 
     pub dialog: Option<Dialog>,
+    pub context_menu: Option<crate::context_menu::ContextMenu>,
+    /// Frame counter for the in-flight request indicator.
+    pub sending_tick: u32,
     pub dialog_input: Entity<TextInput>,
     pub toast: Option<(String, ToastKind)>,
 
@@ -309,6 +312,8 @@ impl AppView {
             history_method: None,
             history_status: HistoryStatusFilter::All,
             dialog: None,
+            context_menu: None,
+            sending_tick: 0,
             dialog_input,
             toast: None,
             loading: true,
@@ -571,6 +576,29 @@ impl AppView {
         tab.response.error_category = None;
         self.status_note = Some(format!("Sending {} {}", request.method, request.url));
         cx.notify();
+
+        // Drive a small animated indicator while the request runs. The loop stops
+        // as soon as no tab is sending, so it costs nothing when idle.
+        cx.spawn(async move |weak, cx| loop {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(140))
+                .await;
+            let keep_going = weak
+                .update(cx, |this, cx| {
+                    if this.tabs.iter().any(|tab| tab.sending) {
+                        this.sending_tick = this.sending_tick.wrapping_add(1);
+                        cx.notify();
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .unwrap_or(false);
+            if !keep_going {
+                break;
+            }
+        })
+        .detach();
 
         let service = self.service.clone();
         self.spawn_core(
@@ -890,6 +918,9 @@ impl Render for AppView {
 
         let mut root = div().relative().size_full().child(content);
 
+        if let Some(menu) = self.render_context_menu(cx) {
+            root = root.child(menu);
+        }
         if let Some(dialog) = self.render_dialog(cx) {
             root = root.child(dialog);
         }
