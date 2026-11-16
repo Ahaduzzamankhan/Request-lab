@@ -199,6 +199,27 @@ It refuses to overwrite an existing tag or release. See
 Do not weaken TLS, log credentials, or replace persistence with in-memory
 storage to make a test pass.
 
+## Design system
+
+One palette, defined once in `crates/requestlab-ui/src/theme.rs`, is pushed into
+Ely's global theme at start-up, so Ely components and RequestLab widgets paint
+from the same tokens.
+
+| Token | Dark | Light |
+|---|---|---|
+| Background | `#080B12` | `#F5F8FD` |
+| Sidebar / Surface 1 | `#0D111B` | `#FFFFFF` |
+| Surface 2 | `#121827` | `#EDF3FA` |
+| Surface 3 | `#192235` | `#E3ECF8` |
+| Primary blue | `#2878FF` | `#216BEB` |
+| Border | `#253249` | `#DCE5F0` |
+| Text | `#F1F5FC` | `#142033` |
+
+Inter is the UI face, JetBrains Mono the code face. Icons are Lucide glyphs from
+Ely's bundled set, never emoji. The application icon lives in
+`assets/branding/` (`requestlab-icon.png`, `requestlab.ico`) and is embedded into
+`requestlab.exe` by `crates/requestlab-app/build.rs`.
+
 ## License
 
 MIT - see [LICENSE](LICENSE). Third-party dependencies keep their own licenses.

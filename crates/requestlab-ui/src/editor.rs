@@ -1,5 +1,6 @@
 //! The request editor: URL bar, configuration tabs and key/value editors.
 
+use ely_gpui_component::primitives::IconName;
 use gpui::prelude::*;
 use gpui::{div, px, Context, IntoElement, SharedString};
 use requestlab_models::{ApiKeyLocation, HttpMethod, RequestBodyKind};
@@ -36,9 +37,12 @@ impl AppView {
                     .h(px(28.0))
                     .px(space::sm())
                     .child(div().text_size(text::micro()).child(" ▾"))
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        view.open_dialog(Dialog::ChooseMethod { tab: tab_index }, cx);
-                    })),
+                    .on_press(
+                        "editor:40",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            view.open_dialog(Dialog::ChooseMethod { tab: tab_index }, cx);
+                        }),
+                    ),
             )
             .child(
                 div()
@@ -72,15 +76,16 @@ impl AppView {
                 )
                 .h(px(28.0))
                 .min_w(px(72.0))
-                .on_click(cx.listener(
-                    |view, _: &gpui::ClickEvent, _window, cx| {
+                .on_press(
+                    "editor:76",
+                    cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                         if view.active_tab_ref().sending {
                             view.cancel_request(cx);
                         } else {
                             view.send_request(cx);
                         }
-                    },
-                )),
+                    }),
+                ),
             )
             .child(
                 components::button(
@@ -89,8 +94,9 @@ impl AppView {
                     ButtonVariant::Secondary,
                 )
                 .h(px(28.0))
-                .on_click(cx.listener(
-                    |view, _: &gpui::ClickEvent, _window, cx| {
+                .on_press(
+                    "editor:93",
+                    cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                         match view.active_tab_ref().editor.saved {
                             Some(location) => {
                                 view.save_request_to(location.collection_id, location.folder_id, cx)
@@ -100,8 +106,8 @@ impl AppView {
                                 view.open_dialog(Dialog::SaveRequest { tab: index }, cx);
                             }
                         }
-                    },
-                )),
+                    }),
+                ),
             );
 
         let mut tab_row = div()
@@ -133,7 +139,8 @@ impl AppView {
             let selected = editor.tab == editor_tab;
             let count = editor.count(editor_tab, cx);
             tab_row = tab_row.child(
-                components::tab_button(&theme, editor_tab.label(), selected, Some(count)).on_click(
+                components::tab_button(&theme, editor_tab.label(), selected, Some(count)).on_press(
+                    "editor:137",
                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                             tab.editor.tab = editor_tab;
@@ -235,8 +242,9 @@ impl AppView {
                     .px(space::sm())
                     .py(px(2.0))
                     .rounded(radius::sm())
-                    .child(components::toggle(&theme, enabled).on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::toggle(&theme, enabled).on_press(
+                        "editor:239",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 let rows = match editor_tab {
                                     EditorTab::Headers => &mut tab.editor.headers,
@@ -247,8 +255,8 @@ impl AppView {
                                 }
                             }
                             cx.notify();
-                        },
-                    )))
+                        }),
+                    ))
                     .child(
                         div()
                             .flex_1()
@@ -282,19 +290,21 @@ impl AppView {
                             .flex()
                             .items_center()
                             .w(px(52.0))
-                            .child(components::icon_button(&theme, "⧉").on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .child(components::icon_button(&theme, IconName::Copy).on_press(
+                                "editor:286",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.duplicate_row(editor_tab, row_id, cx);
-                                },
-                            )))
-                            .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                                }),
+                            ))
+                            .child(components::icon_button(&theme, IconName::X).on_press(
+                                "editor:291",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.remove_row(editor_tab, row_id);
                                     }
                                     cx.notify();
-                                },
-                            ))),
+                                }),
+                            )),
                     ),
             );
         }
@@ -307,7 +317,8 @@ impl AppView {
                 .px(space::sm())
                 .py(space::sm())
                 .child(
-                    components::button(&theme, "＋ Add row", ButtonVariant::Ghost).on_click(
+                    components::button(&theme, "＋ Add row", ButtonVariant::Ghost).on_press(
+                        "editor:311",
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 tab.editor.add_row(editor_tab, cx);
@@ -328,12 +339,15 @@ impl AppView {
         for candidate in RequestBodyKind::ALL {
             kinds = kinds.child(
                 components::tab_button(&theme, candidate.label(), kind == candidate, None)
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                            tab.editor.body_kind = candidate;
-                        }
-                        cx.notify();
-                    })),
+                    .on_press(
+                        "editor:332",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                tab.editor.body_kind = candidate;
+                            }
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 
@@ -470,18 +484,20 @@ impl AppView {
                                     .text_size(text::small())
                                     .child(row.value.clone()),
                             )
-                            .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .child(components::icon_button(&theme, IconName::X).on_press(
+                                "editor:474",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.remove_form_row(row_id);
                                     }
                                     cx.notify();
-                                },
-                            ))),
+                                }),
+                            )),
                     );
                 }
                 rows.child(div().px(space::sm()).py(space::sm()).child(
-                    components::button(&theme, "＋ Add field", ButtonVariant::Ghost).on_click(
+                    components::button(&theme, "＋ Add field", ButtonVariant::Ghost).on_press(
+                        "editor:485",
                         cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 tab.editor.add_form_row(cx);
@@ -519,17 +535,20 @@ impl AppView {
         for candidate in AuthKind::ALL {
             kinds = kinds.child(
                 components::tab_button(&theme, candidate.label(), kind == candidate, None)
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                            let editor = &mut tab.editor;
-                            if editor.auth_kind != candidate {
-                                editor.auth_kind = candidate;
-                                editor.auth_primary.update(cx, |input, _| input.clear());
-                                editor.auth_secondary.update(cx, |input, _| input.clear());
+                    .on_press(
+                        "editor:523",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                let editor = &mut tab.editor;
+                                if editor.auth_kind != candidate {
+                                    editor.auth_kind = candidate;
+                                    editor.auth_primary.update(cx, |input, _| input.clear());
+                                    editor.auth_secondary.update(cx, |input, _| input.clear());
+                                }
                             }
-                        }
-                        cx.notify();
-                    })),
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 
@@ -619,14 +638,15 @@ impl AppView {
                                 editor.api_key_location == location,
                                 None,
                             )
-                            .on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .on_press(
+                                "editor:623",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.api_key_location = location;
                                     }
                                     cx.notify();
-                                },
-                            )),
+                                }),
+                            ),
                         );
                     }
                     fields = fields.child(placement);

@@ -139,15 +139,17 @@ impl AppView {
                             .h(px(30.0))
                             .px(space::md())
                             .cursor(gpui::CursorStyle::PointingHand)
-                            .on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .on_press(
+                                "dialogs:142",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.set_method(method, cx);
-                                },
-                            )),
+                                }),
+                            ),
                     );
                 }
                 card = card.child(grid).child(
-                    components::button(&theme, "Cancel", ButtonVariant::Ghost).on_click(
+                    components::button(&theme, "Cancel", ButtonVariant::Ghost).on_press(
+                        "dialogs:150",
                         cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             view.close_dialog(cx);
                         }),
@@ -164,12 +166,13 @@ impl AppView {
                         self.active_environment.is_none(),
                         None,
                     )
-                    .on_click(cx.listener(
-                        |view, _: &gpui::ClickEvent, _window, cx| {
+                    .on_press(
+                        "dialogs:167",
+                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             view.set_active_environment(None, cx);
                             view.close_dialog(cx);
-                        },
-                    )),
+                        }),
+                    ),
                 );
                 for environment in &self.environments {
                     let id = environment.id;
@@ -177,7 +180,8 @@ impl AppView {
                     let selected = self.active_environment == Some(id);
                     let count = environment.variables.len();
                     list = list.child(div().flex().items_center().justify_between().child(
-                        components::tab_button(&theme, name, selected, Some(count)).on_click(
+                        components::tab_button(&theme, name, selected, Some(count)).on_press(
+                            "dialogs:180",
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_active_environment(Some(id), cx);
                                 view.close_dialog(cx);
@@ -186,7 +190,8 @@ impl AppView {
                     ));
                 }
                 card = card.child(list).child(
-                    components::button(&theme, "Close", ButtonVariant::Ghost).on_click(
+                    components::button(&theme, "Close", ButtonVariant::Ghost).on_press(
+                        "dialogs:189",
                         cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             view.close_dialog(cx);
                         }),
@@ -218,7 +223,8 @@ impl AppView {
                     let mut list = div().flex().flex_col().gap(px(2.0));
                     for (collection_id, folder_id, label) in targets {
                         list = list.child(
-                            components::tab_button(&theme, label, false, None).on_click(
+                            components::tab_button(&theme, label, false, None).on_press(
+                                "dialogs:221",
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.save_request_to(collection_id, folder_id, cx);
                                     view.close_dialog(cx);
@@ -229,7 +235,8 @@ impl AppView {
                     card = card.child(list.into_any_element());
                 }
                 card = card.child(
-                    components::button(&theme, "Cancel", ButtonVariant::Ghost).on_click(
+                    components::button(&theme, "Cancel", ButtonVariant::Ghost).on_press(
+                        "dialogs:232",
                         cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             view.close_dialog(cx);
                         }),
@@ -254,11 +261,12 @@ impl AppView {
                             timeout == seconds,
                             None,
                         )
-                        .on_click(cx.listener(
-                            move |view, _: &gpui::ClickEvent, _window, cx| {
+                        .on_press(
+                            "dialogs:257",
+                            cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_timeout(seconds, cx);
-                            },
-                        )),
+                            }),
+                        ),
                     );
                 }
 
@@ -275,11 +283,12 @@ impl AppView {
                             history_limit == limit,
                             None,
                         )
-                        .on_click(cx.listener(
-                            move |view, _: &gpui::ClickEvent, _window, cx| {
+                        .on_press(
+                            "dialogs:278",
+                            cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_history_limit(limit, cx);
-                            },
-                        )),
+                            }),
+                        ),
                     );
                 }
 
@@ -296,11 +305,12 @@ impl AppView {
                     };
                     themes = themes.child(
                         components::tab_button(&theme, label, self.theme.mode == mode, None)
-                            .on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .on_press(
+                                "dialogs:299",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.set_theme(mode, cx);
-                                },
-                            )),
+                                }),
+                            ),
                     );
                 }
 
@@ -343,10 +353,13 @@ impl AppView {
             }
         }
 
-        let card = card.on_click(cx.listener(|_view, _: &gpui::ClickEvent, _window, cx| {
-            // Keep the click on the card from reaching the backdrop.
-            cx.stop_propagation();
-        }));
+        let card = card.on_press(
+            "dialogs:346",
+            cx.listener(|_view, _: &gpui::ClickEvent, _window, cx| {
+                // Keep the click on the card from reaching the backdrop.
+                cx.stop_propagation();
+            }),
+        );
 
         Some(
             div()
@@ -359,9 +372,12 @@ impl AppView {
                 .items_center()
                 .justify_center()
                 .bg(theme.overlay)
-                .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                    view.close_dialog(cx);
-                }))
+                .on_press(
+                    "dialogs:362",
+                    cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                        view.close_dialog(cx);
+                    }),
+                )
                 .child(card)
                 .into_any_element(),
         )

@@ -1,7 +1,9 @@
 //! Design tokens for RequestLab.
 //!
-//! Every colour, radius and size used by the interface comes from here. The two
-//! palettes follow the product spec: charcoal dark and newspaper light.
+//! Black, electric blue and white. Every colour, radius and size the interface
+//! draws with is declared here exactly once; nothing outside this module writes
+//! a raw colour literal. The same tokens are pushed into Ely's global palette,
+//! so Ely components and RequestLab widgets cannot disagree about a colour.
 
 use ely_gpui_component::theme::{Mode as ElyMode, Palette};
 use gpui::{px, Hsla, Pixels, Rgba};
@@ -39,23 +41,24 @@ impl ThemeMode {
     }
 }
 
-/// Point Ely's global theme at `mode` so Ely components and RequestLab widgets
-/// always paint from the same palette.
-pub fn sync_ely(mode: ThemeMode, cx: &mut gpui::App) {
-    ely_gpui_component::theme::Theme::set_mode_now(mode.ely_mode(), cx);
-}
-
 /// A resolved palette plus the shared geometry values.
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub mode: ThemeMode,
 
+    /// Application background.
     pub background: Rgba,
+    /// Sidebar and primary panels.
     pub sidebar: Rgba,
+    /// Cards and secondary panels.
     pub surface: Rgba,
+    /// Elevated surfaces: dialogs, popovers, tooltips.
     pub elevated: Rgba,
+    /// Scrim behind a modal.
     pub overlay: Rgba,
+    /// Hover state for a surface.
     pub hover: Rgba,
+    /// Selected state for a surface.
     pub active: Rgba,
 
     pub text_primary: Rgba,
@@ -63,8 +66,12 @@ pub struct Theme {
     pub text_muted: Rgba,
 
     pub border: Rgba,
+    /// Focused border and strong separators.
     pub border_strong: Rgba,
     pub accent: Rgba,
+    /// Hovered primary action.
+    pub accent_hover: Rgba,
+    /// Tinted background for selected rows.
     pub accent_muted: Rgba,
 
     pub success: Rgba,
@@ -87,43 +94,55 @@ impl Theme {
         }
     }
 
-    /// RequestLab's dark tokens, taken from Ely's dark palette.
+    /// The default dark palette: deep charcoal, electric blue, cool white.
     pub fn dark() -> Self {
-        Self::from_palette(ThemeMode::Dark, Palette::dark(false))
-    }
-
-    /// RequestLab's light tokens, taken from Ely's light palette.
-    pub fn light() -> Self {
-        Self::from_palette(ThemeMode::Light, Palette::light(false))
-    }
-
-    /// Map Ely's palette onto the tokens this interface draws with.
-    ///
-    /// There is exactly one source of colour: Ely's design tokens. Widgets that
-    /// come from Ely and widgets drawn here therefore cannot drift apart, and a
-    /// palette change in Ely reaches the whole window.
-    fn from_palette(mode: ThemeMode, palette: Palette) -> Self {
-        let color = |value: Hsla| Rgba::from(value);
         Self {
-            mode,
-            background: color(palette.bg),
-            sidebar: color(palette.sunken),
-            surface: color(palette.surface),
-            elevated: color(palette.overlay),
-            overlay: color(palette.backdrop),
-            hover: color(palette.hover),
-            active: color(palette.selection),
-            text_primary: color(palette.fg),
-            text_secondary: color(palette.fg_muted),
-            text_muted: color(palette.fg_subtle),
-            border: color(palette.border),
-            border_strong: color(palette.border_strong),
-            accent: color(palette.link),
-            accent_muted: with_alpha(color(palette.link), 0.22),
-            success: color(palette.success),
-            warning: color(palette.warning),
-            error: color(palette.danger),
-            info: color(palette.info),
+            mode: ThemeMode::Dark,
+            background: rgb(0x080B12),
+            sidebar: rgb(0x0D111B),
+            surface: rgb(0x121827),
+            elevated: rgb(0x192235),
+            overlay: rgba(0x04060ACC),
+            hover: rgb(0x1D2A40),
+            active: rgb(0x142B50),
+            text_primary: rgb(0xF1F5FC),
+            text_secondary: rgb(0xA1AEC2),
+            text_muted: rgb(0x68778E),
+            border: rgb(0x253249),
+            border_strong: rgb(0x347FFF),
+            accent: rgb(0x2878FF),
+            accent_hover: rgb(0x4895FF),
+            accent_muted: rgb(0x142B50),
+            success: rgb(0x31C48D),
+            warning: rgb(0xF5B942),
+            error: rgb(0xF06470),
+            info: rgb(0x55A5FF),
+        }
+    }
+
+    /// The light palette: paper white with the same blue.
+    pub fn light() -> Self {
+        Self {
+            mode: ThemeMode::Light,
+            background: rgb(0xF5F8FD),
+            sidebar: rgb(0xFFFFFF),
+            surface: rgb(0xEDF3FA),
+            elevated: rgb(0xFFFFFF),
+            overlay: rgba(0x14203333),
+            hover: rgb(0xE3ECF8),
+            active: rgb(0xE6F0FF),
+            text_primary: rgb(0x142033),
+            text_secondary: rgb(0x53647B),
+            text_muted: rgb(0x8795A9),
+            border: rgb(0xDCE5F0),
+            border_strong: rgb(0x347FFF),
+            accent: rgb(0x216BEB),
+            accent_hover: rgb(0x347FFF),
+            accent_muted: rgb(0xE6F0FF),
+            success: rgb(0x1F9D6B),
+            warning: rgb(0xB47812),
+            error: rgb(0xD1495A),
+            info: rgb(0x2C7ADB),
         }
     }
 
@@ -133,7 +152,7 @@ impl Theme {
             HttpMethod::Get => self.success,
             HttpMethod::Post => self.accent,
             HttpMethod::Put => self.warning,
-            HttpMethod::Patch => self.info,
+            HttpMethod::Patch => rgb(0xA98BFF),
             HttpMethod::Delete => self.error,
             HttpMethod::Head => self.text_secondary,
             HttpMethod::Options => self.text_secondary,
@@ -155,10 +174,10 @@ impl Theme {
     /// Colour for a JSON token type.
     pub fn json_color(&self, token: JsonToken) -> Rgba {
         match token {
-            JsonToken::Key => self.accent,
+            JsonToken::Key => self.info,
             JsonToken::String => self.success,
             JsonToken::Number => self.warning,
-            JsonToken::Boolean => self.info,
+            JsonToken::Boolean => rgb(0xA98BFF),
             JsonToken::Null => self.text_muted,
             JsonToken::Punctuation => self.text_secondary,
         }
@@ -171,6 +190,50 @@ impl Theme {
     pub fn mono_family(&self) -> &'static str {
         MONO_FAMILY
     }
+
+    /// This palette expressed as Ely's tokens.
+    fn ely_palette(&self) -> Palette {
+        let mut palette = match self.mode {
+            ThemeMode::Dark => Palette::dark(false),
+            ThemeMode::Light => Palette::light(false),
+        };
+        palette.bg = self.background.into();
+        palette.surface = self.surface.into();
+        palette.sunken = self.sidebar.into();
+        palette.overlay = self.elevated.into();
+        palette.hover = self.hover.into();
+        palette.active = self.active.into();
+        palette.border = self.border.into();
+        palette.border_strong = self.border_strong.into();
+        palette.fg = self.text_primary.into();
+        palette.fg_muted = self.text_secondary.into();
+        palette.fg_subtle = self.text_muted.into();
+        palette.fg_disabled = self.text_muted.into();
+        palette.accent = self.accent.into();
+        palette.accent_hover = self.accent_hover.into();
+        palette.on_accent = self.background.into();
+        palette.focus = self.border_strong.into();
+        palette.link = self.accent_hover.into();
+        palette.selection = self.active.into();
+        palette.success = self.success.into();
+        palette.warning = self.warning.into();
+        palette.danger = self.error.into();
+        palette.info = self.info.into();
+        palette.backdrop = self.overlay.into();
+        palette.tooltip_bg = self.elevated.into();
+        palette.tooltip_fg = self.text_primary.into();
+        palette
+    }
+}
+
+/// Push RequestLab's palette into Ely and select the matching mode.
+///
+/// Called at start-up and on every theme change so Ely components (segmented
+/// controls, buttons, icons) paint from exactly the same tokens.
+pub fn sync_ely(mode: ThemeMode, cx: &mut gpui::App) {
+    let theme = Theme::for_mode(mode);
+    ely_gpui_component::theme::Theme::set_palette(mode.ely_mode(), Some(theme.ely_palette()), cx);
+    ely_gpui_component::theme::Theme::set_mode_now(mode.ely_mode(), cx);
 }
 
 /// Token classes used by the JSON viewer.
@@ -184,8 +247,8 @@ pub enum JsonToken {
     Punctuation,
 }
 
-pub const SANS_FAMILY: &str = "Segoe UI";
-pub const MONO_FAMILY: &str = "Cascadia Mono";
+pub const SANS_FAMILY: &str = "Inter";
+pub const MONO_FAMILY: &str = "JetBrains Mono";
 
 pub fn rgb(hex: u32) -> Rgba {
     gpui::rgb(hex)
@@ -203,7 +266,12 @@ pub fn with_alpha(color: Rgba, alpha: f32) -> Rgba {
     }
 }
 
-/// Shared geometry tokens.
+/// Convert a token to the colour type GPUI components take.
+pub fn hsla(color: Rgba) -> Hsla {
+    color.into()
+}
+
+/// Shared spacing scale: 4 / 8 / 12 / 16 / 24.
 pub mod space {
     use gpui::{px, Pixels};
 
@@ -211,58 +279,61 @@ pub mod space {
         px(4.0)
     }
     pub fn sm() -> Pixels {
-        px(6.0)
+        px(8.0)
     }
     pub fn md() -> Pixels {
-        px(10.0)
+        px(12.0)
     }
     pub fn lg() -> Pixels {
-        px(14.0)
+        px(16.0)
     }
     pub fn xl() -> Pixels {
-        px(20.0)
+        px(24.0)
     }
 }
 
-/// Shared type scale.
+/// Shared type scale: 11 / 12 / 13 / 14 / 20 / 26.
 pub mod text {
     use gpui::{px, Pixels};
 
     pub fn micro() -> Pixels {
-        px(10.5)
+        px(11.0)
     }
     pub fn small() -> Pixels {
-        px(11.5)
+        px(12.0)
     }
     pub fn body() -> Pixels {
-        px(12.5)
+        px(13.0)
     }
     pub fn title() -> Pixels {
         px(14.0)
     }
     pub fn heading() -> Pixels {
-        px(16.0)
+        px(20.0)
+    }
+    pub fn display() -> Pixels {
+        px(26.0)
     }
 }
 
-/// Shared corner radii.
+/// Shared corner radii: 6 / 8 / 12.
 pub mod radius {
     use gpui::{px, Pixels};
 
     pub fn sm() -> Pixels {
-        px(4.0)
-    }
-    pub fn md() -> Pixels {
         px(6.0)
     }
+    pub fn md() -> Pixels {
+        px(8.0)
+    }
     pub fn lg() -> Pixels {
-        px(9.0)
+        px(12.0)
     }
 }
 
 /// Window chrome constants.
-pub const TITLE_BAR_HEIGHT: Pixels = px(38.0);
-pub const SIDEBAR_WIDTH: Pixels = px(258.0);
+pub const TITLE_BAR_HEIGHT: Pixels = px(44.0);
+pub const SIDEBAR_WIDTH: Pixels = px(260.0);
 pub const MIN_WINDOW_WIDTH: f32 = 940.0;
 pub const MIN_WINDOW_HEIGHT: f32 = 600.0;
 
@@ -276,23 +347,28 @@ mod tests {
         assert_eq!(ThemeMode::from_setting("dark"), ThemeMode::Dark);
         assert_eq!(ThemeMode::from_setting("nonsense"), ThemeMode::Dark);
         assert_eq!(ThemeMode::Light.as_setting(), "light");
-    }
-
-    #[test]
-    fn tokens_come_from_ely_palettes() {
-        let dark = Theme::dark();
-        let palette = Palette::dark(false);
-        assert_eq!(dark.background, Rgba::from(palette.bg));
-        assert_eq!(dark.error, Rgba::from(palette.danger));
-        assert_eq!(dark.text_primary, Rgba::from(palette.fg));
         assert_eq!(ThemeMode::Light.ely_mode(), ElyMode::Light);
     }
 
     #[test]
-    fn palettes_differ_and_cover_status_colors() {
+    fn the_palettes_use_the_design_tokens() {
         let dark = Theme::dark();
+        assert_eq!(dark.background, rgb(0x080B12));
+        assert_eq!(dark.surface, rgb(0x121827));
+        assert_eq!(dark.accent, rgb(0x2878FF));
+        assert_eq!(dark.border, rgb(0x253249));
+        assert_eq!(dark.text_primary, rgb(0xF1F5FC));
+
         let light = Theme::light();
+        assert_eq!(light.background, rgb(0xF5F8FD));
+        assert_eq!(light.accent, rgb(0x216BEB));
+        assert_eq!(light.text_primary, rgb(0x142033));
         assert_ne!(dark.background, light.background);
+    }
+
+    #[test]
+    fn palettes_cover_status_colors() {
+        let dark = Theme::dark();
         assert_eq!(dark.status_color(Some(200)), dark.success);
         assert_eq!(dark.status_color(Some(302)), dark.info);
         assert_eq!(dark.status_color(Some(404)), dark.warning);

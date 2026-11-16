@@ -1,5 +1,6 @@
 //! Application toolbar, request tab strip and status bar.
 
+use ely_gpui_component::primitives::IconName;
 use gpui::prelude::*;
 use gpui::{div, px, Context, IntoElement, SharedString, Window};
 use requestlab_models::human_duration;
@@ -112,36 +113,46 @@ impl AppView {
                             .hover(move |style| style.bg(theme.hover))
                             .child(div().size(px(6.0)).rounded(px(3.0)).bg(environment_color))
                             .child(active_environment)
-                            .child(div().text_color(theme.text_muted).child("▾"))
-                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                                view.open_dialog(Dialog::ChooseEnvironment, cx);
-                            })),
+                            .child(components::icon(IconName::ChevronDown, theme.text_muted))
+                            .on_press(
+                                "toolbar:119",
+                                cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.open_dialog(Dialog::ChooseEnvironment, cx);
+                                }),
+                            ),
                     )
                     .child(
                         components::icon_button(
                             &theme,
                             if theme.mode == ThemeMode::Dark {
-                                "☀"
+                                IconName::Sun
                             } else {
-                                "☾"
+                                IconName::Moon
                             },
                         )
-                        .on_click(cx.listener(
-                            |view, _: &gpui::ClickEvent, _window, cx| {
+                        .debug_selector(|| "theme-toggle".to_string())
+                        .on_press(
+                            "toolbar:133",
+                            cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                                 let next = if view.theme.mode == ThemeMode::Dark {
                                     ThemeMode::Light
                                 } else {
                                     ThemeMode::Dark
                                 };
                                 view.set_theme(next, cx);
-                            },
-                        )),
+                            }),
+                        ),
                     )
-                    .child(components::icon_button(&theme, "⚙").on_click(cx.listener(
-                        |view, _: &gpui::ClickEvent, _window, cx| {
-                            view.open_dialog(Dialog::Settings, cx);
-                        },
-                    )))
+                    .child(
+                        components::icon_button(&theme, IconName::Settings)
+                            .debug_selector(|| "settings".to_string())
+                            .on_press(
+                                "toolbar:147",
+                                cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.open_dialog(Dialog::Settings, cx);
+                                }),
+                            ),
+                    )
                     .child(
                         div()
                             .text_size(text::micro())
@@ -200,31 +211,40 @@ impl AppView {
                         }),
                 )
                 .child(div().truncate().child(title))
-                .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                    view.active_tab = index;
-                    cx.notify();
-                }));
+                .on_press(
+                    "toolbar:211",
+                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                        view.active_tab = index;
+                        cx.notify();
+                    }),
+                );
 
             if self.tabs.len() > 1 {
-                item = item.child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                    move |view, event: &gpui::ClickEvent, window, cx| {
+                item = item.child(components::icon_button(&theme, IconName::X).on_press(
+                    "toolbar:217",
+                    cx.listener(move |view, event: &gpui::ClickEvent, window, cx| {
                         if event.click_count() > 0 {
                             view.close_tab(index, cx);
                             let _ = window;
                         }
-                    },
-                )));
+                    }),
+                ));
             }
             strip = strip.child(item);
         }
 
-        strip.child(div().flex().items_center().child(
-            components::icon_button(&theme, "＋").on_click(cx.listener(
-                |view, _: &gpui::ClickEvent, _window, cx| {
-                    view.new_tab(cx);
-                },
-            )),
-        ))
+        strip.child(
+            div().flex().items_center().child(
+                components::icon_button(&theme, IconName::Plus)
+                    .debug_selector(|| "new-tab".to_string())
+                    .on_press(
+                        "toolbar:232",
+                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                            view.new_tab(cx);
+                        }),
+                    ),
+            ),
+        )
     }
 
     pub(crate) fn render_status_bar(

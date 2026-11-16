@@ -3,25 +3,30 @@
 //! Every helper returns a styled [`Div`] so the caller can attach its own event
 //! handlers. Nothing here renders a control that has no behaviour attached.
 
+use ely_gpui_component::primitives::{Icon, IconName};
+use ely_gpui_component::theme::IconSize;
 use gpui::prelude::*;
-use gpui::{div, px, CursorStyle, Div, SharedString};
+use gpui::{div, px, CursorStyle, Div, Rgba, SharedString};
 
-/// Interaction helpers for elements that are not addressable by id.
+/// Interaction helpers for elements that are not otherwise stateful.
 ///
-/// Clicks are consumed by the element that declared the listener: a button
-/// nested in a clickable row (a delete icon in a history row, a close icon in a
-/// tab) must not also trigger the row's own handler.
+/// GPUI dispatches a click only for an element that carries a stable
+/// `ElementId`, so every clickable element names itself. The click is consumed
+/// by the element that declared it: a delete icon inside a clickable row must
+/// not also trigger the row's own handler.
 pub trait InteractiveExt: gpui::InteractiveElement + gpui::Styled + Sized {
-    fn on_click(
+    fn on_press(
         self,
+        id: impl Into<gpui::ElementId>,
         listener: impl Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static,
-    ) -> Self {
-        let mut this = self;
-        this.interactivity().on_click(move |event, window, cx| {
+    ) -> gpui::Stateful<Self>
+    where
+        Self: gpui::Element + 'static,
+    {
+        self.id(id).on_click(move |event, window, cx| {
             listener(event, window, cx);
             cx.stop_propagation();
-        });
-        this
+        })
     }
 
     fn overflow_scroll(mut self) -> Self {
@@ -114,19 +119,30 @@ pub fn button(theme: &Theme, label: impl Into<SharedString>, variant: ButtonVari
         .child(label.into())
 }
 
-/// A compact square button for an icon or single glyph.
-pub fn icon_button(theme: &Theme, glyph: impl Into<SharedString>) -> Div {
+/// A Lucide icon from Ely's icon set at the standard control size.
+pub fn icon(name: IconName, color: Rgba) -> Icon {
+    Icon::new(name).size(IconSize::Sm).color(color)
+}
+
+/// A compact square button for an icon.
+///
+/// Icons come from the one bundled set so stroke weight and optical size stay
+/// consistent across the window. Icon-only controls are paired with a tooltip
+/// by the caller.
+pub fn icon_button(theme: &Theme, name: IconName) -> Div {
     div()
         .flex()
         .items_center()
         .justify_center()
-        .size(px(24.0))
+        .size(px(26.0))
         .rounded(radius::sm())
-        .text_color(theme.text_secondary)
-        .text_size(text::body())
         .cursor(CursorStyle::PointingHand)
-        .hover(move |style| style.bg(theme.hover).text_color(theme.text_primary))
-        .child(glyph.into())
+        .hover(move |style| style.bg(theme.hover))
+        .child(
+            Icon::new(name)
+                .size(IconSize::Sm)
+                .color(theme.text_secondary),
+        )
 }
 
 /// A tab inside a tab bar.
@@ -322,7 +338,14 @@ pub fn toggle(theme: &Theme, enabled: bool) -> Div {
         .text_size(px(9.0))
         .text_color(mark)
         .cursor(CursorStyle::PointingHand)
-        .child(if enabled { "✓" } else { "" })
+        .child(if enabled {
+            Icon::new(IconName::Check)
+                .size(IconSize::Xs)
+                .color(theme.background)
+                .into_any_element()
+        } else {
+            div().into_any_element()
+        })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

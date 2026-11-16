@@ -86,6 +86,34 @@ pub fn line_col_at(content: &str, offset: usize) -> (usize, usize) {
     (line, offset - line_start)
 }
 
+/// The largest char boundary at or below `offset`.
+pub fn floor_boundary_in(content: &str, offset: usize) -> usize {
+    let mut offset = offset.min(content.len());
+    while offset > 0 && !content.is_char_boundary(offset) {
+        offset -= 1;
+    }
+    offset
+}
+
+/// The smallest char boundary at or above `offset`.
+pub fn ceil_boundary_in(content: &str, offset: usize) -> usize {
+    let mut offset = offset.min(content.len());
+    while offset < content.len() && !content.is_char_boundary(offset) {
+        offset += 1;
+    }
+    offset
+}
+
+/// Clamp a byte range onto `content`.
+///
+/// Ranges arrive from the platform (IME, accessibility, stale selection
+/// snapshots) and may not describe this content at all.
+pub fn clamp_range_in(content: &str, range: std::ops::Range<usize>) -> std::ops::Range<usize> {
+    let start = floor_boundary_in(content, range.start);
+    let end = ceil_boundary_in(content, range.end.max(start));
+    start..end
+}
+
 /// Byte offset where `line_index` begins.
 pub fn line_start_at(content: &str, line_index: usize) -> usize {
     if line_index == 0 {
@@ -405,7 +433,8 @@ impl TextInput {
 
     /// Byte offset of the cursor, split into line index and offset within it.
     fn line_col(&self, offset: usize) -> (usize, usize) {
-        let before = &self.content[..offset.min(self.content.len())];
+        let offset = floor_boundary_in(&self.content, offset);
+        let before = &self.content[..offset];
         let line_index = before.matches('\n').count();
         let line_start = before.rfind('\n').map(|index| index + 1).unwrap_or(0);
         (line_index, offset - line_start)
@@ -486,6 +515,10 @@ impl TextInput {
         utf16_offset
     }
 
+    fn clamp_range(&self, range: Range<usize>) -> Range<usize> {
+        clamp_range_in(&self.content, range)
+    }
+
     fn range_to_utf16(&self, range: &Range<usize>) -> Range<usize> {
         self.offset_to_utf16(range.start)..self.offset_to_utf16(range.end)
     }
@@ -518,7 +551,7 @@ impl EntityInputHandler for TextInput {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<String> {
-        let range = self.range_from_utf16(&range_utf16);
+        let range = self.clamp_range(self.range_from_utf16(&range_utf16));
         actual_range.replace(self.range_to_utf16(&range));
         Some(self.content[range].to_string())
     }
@@ -559,8 +592,9 @@ impl EntityInputHandler for TextInput {
         let range = range_utf16
             .as_ref()
             .map(|range| self.range_from_utf16(range))
-            .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
+            .or_else(|| self.marked_range.clone())
+            .unwrap_or_else(|| self.selected_range.clone());
+        let range = self.clamp_range(range);
 
         let new_text = if self.multiline {
             new_text.to_string()
@@ -587,8 +621,9 @@ impl EntityInputHandler for TextInput {
         let range = range_utf16
             .as_ref()
             .map(|range| self.range_from_utf16(range))
-            .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
+            .or_else(|| self.marked_range.clone())
+            .unwrap_or_else(|| self.selected_range.clone());
+        let range = self.clamp_range(range);
 
         self.content =
             (self.content[0..range.start].to_owned() + new_text + &self.content[range.end..])
@@ -616,7 +651,7 @@ impl EntityInputHandler for TextInput {
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
         let measured = self.last_measured.as_ref()?;
-        let range = self.range_from_utf16(&range_utf16);
+        let range = self.clamp_range(self.range_from_utf16(&range_utf16));
         let (line_index, _) = self.line_col(range.start);
         let shape = measured.shapes.get(line_index)?;
         let line_start = self.line_start_offset(line_index);
@@ -905,10 +940,22 @@ mod tests {
         assert_eq!(line_col_at(content, 0), (0, 0));
         assert_eq!(line_col_at(content, 4), (1, 0));
         assert_eq!(line_col_at(content, 6), (1, 2));
-        assert_eq!(line_col_at(content, 9), (2, 0));
+        assert_eq!(line_col_at(content, 9), (2, 1));
+        assert_eq!(line_col_at(content, 8), (2, 0));
         assert_eq!(line_start_at(content, 0), 0);
         assert_eq!(line_start_at(content, 1), 4);
         assert_eq!(line_start_at(content, 2), 8);
+    }
+
+    #[test]
+    fn out_of_range_platform_ranges_do_not_panic() {
+        // GPUI hands the input handler ranges taken from its own, possibly
+        // stale, selection snapshot; an unclamped range used to crash the app.
+        assert_eq!(clamp_range_in("", 0..2), 0..0);
+        assert_eq!(clamp_range_in("", 5..9), 0..0);
+        assert_eq!(clamp_range_in("héllo", 0..3), 0..3);
+        assert_eq!(clamp_range_in("héllo", 2..4), 1..4);
+        assert_eq!(clamp_range_in("héllo", 4..99), 4..6);
     }
 
     #[test]

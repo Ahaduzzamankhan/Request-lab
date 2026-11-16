@@ -1,5 +1,6 @@
 //! Sidebar: collections tree, request history and environment variables.
 
+use ely_gpui_component::primitives::IconName;
 use gpui::prelude::*;
 use gpui::{div, px, Context, IntoElement, SharedString};
 use requestlab_core::EnvironmentError;
@@ -17,8 +18,8 @@ impl AppView {
     pub(crate) fn render_sidebar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
         let header_action = match self.sidebar {
-            SidebarSection::Collections => Some(("＋", "New collection")),
-            SidebarSection::Environments => Some(("＋", "New environment")),
+            SidebarSection::Collections => Some(("New collection", "New collection")),
+            SidebarSection::Environments => Some(("New environment", "New environment")),
             SidebarSection::History => None,
         };
 
@@ -38,9 +39,10 @@ impl AppView {
                     .child(self.sidebar.label()),
             );
 
-        if let Some((glyph, tooltip)) = header_action {
-            header = header.child(components::icon_button(&theme, glyph).on_click(cx.listener(
-                move |view, _: &gpui::ClickEvent, _window, cx| {
+        if let Some((_, tooltip)) = header_action {
+            header = header.child(components::icon_button(&theme, IconName::Plus).on_press(
+                "sidebar:43",
+                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                     let action = match view.sidebar {
                         SidebarSection::Collections => PromptAction::NewCollection,
                         _ => PromptAction::NewEnvironment,
@@ -59,8 +61,8 @@ impl AppView {
                         },
                         cx,
                     );
-                },
-            )));
+                }),
+            ));
         }
 
         let body: gpui::AnyElement = match self.sidebar {
@@ -138,12 +140,14 @@ impl AppView {
                 .px(space::sm())
                 .hover(move |style| style.bg(theme.hover))
                 .child(
-                    div()
-                        .w(px(12.0))
-                        .flex_shrink_0()
-                        .text_size(text::micro())
-                        .text_color(theme.text_secondary)
-                        .child(if expanded { "▾" } else { "▸" }),
+                    div().w(px(12.0)).flex_shrink_0().child(components::icon(
+                        if expanded {
+                            IconName::ChevronDown
+                        } else {
+                            IconName::ChevronRight
+                        },
+                        theme.text_secondary,
+                    )),
                 )
                 .child(
                     div()
@@ -161,7 +165,7 @@ impl AppView {
                         .text_color(theme.text_muted)
                         .child(count.to_string()),
                 )
-                .child(components::icon_button(&theme, "＋").on_click(cx.listener(
+                .child(components::icon_button(&theme, IconName::Plus).on_press("sidebar:167", cx.listener(
                     move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Prompt {
@@ -177,7 +181,7 @@ impl AppView {
                         );
                     },
                 )))
-                .child(components::icon_button(&theme, "✎").on_click(cx.listener(
+                .child(components::icon_button(&theme, IconName::Pencil).on_press("sidebar:183", cx.listener(
                     move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Prompt {
@@ -190,7 +194,7 @@ impl AppView {
                         );
                     },
                 )))
-                .child(components::icon_button(&theme, "⧉").on_click(cx.listener(
+                .child(components::icon_button(&theme, IconName::Copy).on_press("sidebar:196", cx.listener(
                     move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Prompt {
@@ -203,7 +207,7 @@ impl AppView {
                         );
                     },
                 )))
-                .child(components::icon_button(&theme, "✕").on_click(cx.listener(
+                .child(components::icon_button(&theme, IconName::X).on_press("sidebar:209", cx.listener(
                     move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Confirm {
@@ -217,7 +221,7 @@ impl AppView {
                         );
                     },
                 )))
-                .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                .on_press("sidebar:223", cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                     if !view.expanded_collections.remove(&collection_id) {
                         view.expanded_collections.insert(collection_id);
                     }
@@ -272,13 +276,15 @@ impl AppView {
                             .text_color(theme.text_secondary)
                             .child(name.clone()),
                     )
-                    .child(components::icon_button(&theme, "⧉").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::icon_button(&theme, IconName::Copy).on_press(
+                        "sidebar:278",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.duplicate_saved_request(saved_id, cx);
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::X).on_press(
+                        "sidebar:283",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
                                     title: "Delete request".to_string(),
@@ -287,11 +293,14 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        view.open_saved_request(saved_id, collection_id, folder_id, cx);
-                    })),
+                        }),
+                    ))
+                    .on_press(
+                        "sidebar:295",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            view.open_saved_request(saved_id, collection_id, folder_id, cx);
+                        }),
+                    ),
             );
         }
 
@@ -312,13 +321,14 @@ impl AppView {
                 .pl(px(8.0 + depth as f32 * 12.0))
                 .pr(space::sm())
                 .hover(move |style| style.bg(theme.hover))
-                .child(
-                    div()
-                        .w(px(12.0))
-                        .text_size(text::micro())
-                        .text_color(theme.text_secondary)
-                        .child(if expanded { "▾" } else { "▸" }),
-                )
+                .child(div().w(px(12.0)).child(components::icon(
+                    if expanded {
+                        IconName::ChevronDown
+                    } else {
+                        IconName::ChevronRight
+                    },
+                    theme.text_secondary,
+                )))
                 .child(
                     div()
                         .flex_1()
@@ -333,12 +343,16 @@ impl AppView {
                         .text_size(text::micro())
                         .text_color(theme.text_muted)
                         .child(request_count.to_string()),
-                );
+                )
+                .id(gpui::ElementId::from(format!(
+                    "folder-row:{collection_id}:{folder_name}"
+                )));
 
             if let Some(folder_id) = folder_id {
                 row = row
-                    .child(components::icon_button(&theme, "＋").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::icon_button(&theme, IconName::Plus).on_press(
+                        "sidebar:346",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
                                     title: format!("New folder in {folder_new}"),
@@ -351,10 +365,11 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "✎").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::Pencil).on_press(
+                        "sidebar:362",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
                                     title: "Rename folder".to_string(),
@@ -364,10 +379,11 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::X).on_press(
+                        "sidebar:375",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
                                     title: "Delete folder".to_string(),
@@ -378,8 +394,8 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
+                        }),
+                    ))
                     .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         if !view.expanded_folders.remove(&folder_id) {
                             view.expanded_folders.insert(folder_id);
@@ -416,7 +432,8 @@ impl AppView {
 
         let mut methods = div().flex().flex_wrap().gap(px(2.0));
         methods = methods.child(
-            components::tab_button(&theme, "All", self.history_method.is_none(), None).on_click(
+            components::tab_button(&theme, "All", self.history_method.is_none(), None).on_press(
+                "sidebar:425",
                 cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                     view.history_method = None;
                     view.reload_history(cx);
@@ -426,7 +443,8 @@ impl AppView {
         for method in HttpMethod::ALL {
             let selected = self.history_method == Some(method);
             methods = methods.child(
-                components::tab_button(&theme, method.as_str(), selected, None).on_click(
+                components::tab_button(&theme, method.as_str(), selected, None).on_press(
+                    "sidebar:435",
                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.history_method = if view.history_method == Some(method) {
                             None
@@ -452,12 +470,13 @@ impl AppView {
                 HistoryStatusFilter::Failed => "Failed",
             };
             statuses = statuses.child(
-                components::tab_button(&theme, label, selected, None).on_click(cx.listener(
-                    move |view, _: &gpui::ClickEvent, _window, cx| {
+                components::tab_button(&theme, label, selected, None).on_press(
+                    "sidebar:461",
+                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.history_status = status;
                         view.reload_history(cx);
-                    },
-                )),
+                    }),
+                ),
             );
         }
         filters = filters.child(statuses);
@@ -475,9 +494,12 @@ impl AppView {
                 .child(
                     components::button(&theme, "Search", ButtonVariant::Ghost)
                         .h(px(20.0))
-                        .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                            view.reload_history(cx);
-                        })),
+                        .on_press(
+                            "sidebar:484",
+                            cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                view.reload_history(cx);
+                            }),
+                        ),
                 ),
         );
 
@@ -551,8 +573,9 @@ impl AppView {
                             .map(|code| code.to_string())
                             .unwrap_or_else(|| "ERR".to_string()),
                     ))
-                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::icon_button(&theme, IconName::X).on_press(
+                        "sidebar:560",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
                                     title: "Delete history entry".to_string(),
@@ -562,17 +585,20 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                            tab.editor.load(&request, cx);
-                            tab.editor.saved = None;
-                        }
-                        view.sidebar = SidebarSection::Collections;
-                        view.show_toast("Loaded request from history", ToastKind::Info);
-                        cx.notify();
-                    })),
+                        }),
+                    ))
+                    .on_press(
+                        "sidebar:573",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                tab.editor.load(&request, cx);
+                                tab.editor.saved = None;
+                            }
+                            view.sidebar = SidebarSection::Collections;
+                            view.show_toast("Loaded request from history", ToastKind::Info);
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 
@@ -584,7 +610,8 @@ impl AppView {
             .child(filters)
             .child(list)
             .child(div().p(space::sm()).child(
-                components::button(&theme, "Clear history", ButtonVariant::Ghost).on_click(
+                components::button(&theme, "Clear history", ButtonVariant::Ghost).on_press(
+                    "sidebar:593",
                     cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                         view.open_dialog(
                             Dialog::Confirm {
@@ -650,13 +677,15 @@ impl AppView {
                             .text_color(theme.text_muted)
                             .child(variable_count.to_string()),
                     )
-                    .child(components::icon_button(&theme, "✓").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::icon_button(&theme, IconName::Check).on_press(
+                        "sidebar:659",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.set_active_environment(Some(id), cx);
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "✎").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::Pencil).on_press(
+                        "sidebar:664",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
                                     title: "Rename environment".to_string(),
@@ -666,10 +695,11 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "⧉").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::Copy).on_press(
+                        "sidebar:677",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
                                     title: "Duplicate environment".to_string(),
@@ -679,10 +709,11 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                        move |view, _: &gpui::ClickEvent, _window, cx| {
+                        }),
+                    ))
+                    .child(components::icon_button(&theme, IconName::X).on_press(
+                        "sidebar:690",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
                                     title: "Delete environment".to_string(),
@@ -691,12 +722,15 @@ impl AppView {
                                 },
                                 cx,
                             );
-                        },
-                    )))
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        view.load_environment(id, cx);
-                        cx.notify();
-                    })),
+                        }),
+                    ))
+                    .on_press(
+                        "sidebar:702",
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            view.load_environment(id, cx);
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 
@@ -716,11 +750,12 @@ impl AppView {
                     .child(
                         components::button(&theme, "Save", ButtonVariant::Secondary)
                             .h(px(22.0))
-                            .on_click(cx.listener(
-                                move |view, _: &gpui::ClickEvent, _window, cx| {
+                            .on_press(
+                                "sidebar:725",
+                                cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.save_environment_variables(selected, cx);
-                                },
-                            )),
+                                }),
+                            ),
                     ),
             );
 
@@ -733,15 +768,16 @@ impl AppView {
                         .flex()
                         .items_center()
                         .gap(px(3.0))
-                        .child(components::toggle(&theme, enabled).on_click(cx.listener(
-                            move |view, _: &gpui::ClickEvent, _window, cx| {
+                        .child(components::toggle(&theme, enabled).on_press(
+                            "sidebar:742",
+                            cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 if let Some(row) = view.env_rows.iter_mut().find(|r| r.id == row_id)
                                 {
                                     row.enabled = !row.enabled;
                                 }
                                 cx.notify();
-                            },
-                        )))
+                            }),
+                        ))
                         .child(
                             div()
                                 .w(px(104.0))
@@ -789,23 +825,25 @@ impl AppView {
                                     theme.surface
                                 })
                                 .child("★")
-                                .on_click(cx.listener(
-                                    move |view, _: &gpui::ClickEvent, _window, cx| {
+                                .on_press(
+                                    "sidebar:798",
+                                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                         if let Some(row) =
                                             view.env_rows.iter_mut().find(|r| r.id == row_id)
                                         {
                                             row.secret = !row.secret;
                                         }
                                         cx.notify();
-                                    },
-                                )),
+                                    }),
+                                ),
                         )
-                        .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                            move |view, _: &gpui::ClickEvent, _window, cx| {
+                        .child(components::icon_button(&theme, IconName::X).on_press(
+                            "sidebar:809",
+                            cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.env_rows.retain(|row| row.id != row_id);
                                 cx.notify();
-                            },
-                        ))),
+                            }),
+                        )),
                 );
             }
 
@@ -818,10 +856,13 @@ impl AppView {
                     .child(
                         components::button(&theme, "＋ Add", ButtonVariant::Ghost)
                             .h(px(22.0))
-                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                                view.push_env_row(cx);
-                                cx.notify();
-                            })),
+                            .on_press(
+                                "sidebar:827",
+                                cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                    view.push_env_row(cx);
+                                    cx.notify();
+                                }),
+                            ),
                     )
                     .child(
                         div()

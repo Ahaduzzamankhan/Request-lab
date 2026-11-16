@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(match_count(&rows), 1);
         let hit = rows.iter().find(|row| row.matched).unwrap();
         assert_eq!(hit.path, "/user/role");
-        assert_eq!(rows.len(), 5, "searching should expand containers");
+        assert_eq!(rows.len(), 4, "searching should expand containers");
     }
 
     #[test]

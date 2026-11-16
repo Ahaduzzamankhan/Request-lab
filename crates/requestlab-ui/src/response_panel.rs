@@ -109,38 +109,44 @@ impl AppView {
                     .child(
                         components::button(&theme, "Copy body", ButtonVariant::Ghost)
                             .h(px(22.0))
-                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                                let text = view
-                                    .active_tab_ref()
-                                    .response
-                                    .response
-                                    .as_ref()
-                                    .and_then(|response| response.body.as_text())
-                                    .unwrap_or_default()
-                                    .to_string();
-                                if !text.is_empty() {
-                                    cx.write_to_clipboard(ClipboardItem::new_string(text));
-                                    view.toast = Some((
-                                        "Response body copied".to_string(),
-                                        crate::components::ToastKind::Success,
-                                    ));
-                                    cx.notify();
-                                }
-                            })),
+                            .on_press(
+                                "response_panel:112",
+                                cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                    let text = view
+                                        .active_tab_ref()
+                                        .response
+                                        .response
+                                        .as_ref()
+                                        .and_then(|response| response.body.as_text())
+                                        .unwrap_or_default()
+                                        .to_string();
+                                    if !text.is_empty() {
+                                        cx.write_to_clipboard(ClipboardItem::new_string(text));
+                                        view.toast = Some((
+                                            "Response body copied".to_string(),
+                                            crate::components::ToastKind::Success,
+                                        ));
+                                        cx.notify();
+                                    }
+                                }),
+                            ),
                     )
                     .child(
                         components::button(&theme, "Clear", ButtonVariant::Ghost)
                             .h(px(22.0))
-                            .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                                if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                                    tab.response.response = None;
-                                    tab.response.error = None;
-                                    tab.response.error_category = None;
-                                    tab.response.variables.clear();
-                                    tab.response.resolved_url = None;
-                                }
-                                cx.notify();
-                            })),
+                            .on_press(
+                                "response_panel:134",
+                                cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                        tab.response.response = None;
+                                        tab.response.error = None;
+                                        tab.response.error_category = None;
+                                        tab.response.variables.clear();
+                                        tab.response.resolved_url = None;
+                                    }
+                                    cx.notify();
+                                }),
+                            ),
                     ),
             );
 
@@ -510,7 +516,8 @@ impl AppView {
                     style.bg(crate::theme::with_alpha(theme.warning, 0.16))
                 })
                 .hover(|style| style.bg(theme.hover))
-                .cursor(gpui::CursorStyle::PointingHand);
+                .cursor(gpui::CursorStyle::PointingHand)
+                .id(gpui::ElementId::from(format!("json-row:{path}")));
 
             if expandable {
                 line = line.child(

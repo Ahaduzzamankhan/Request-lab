@@ -72,7 +72,7 @@ do not assume a number that has not been measured.
 ```json
 {
   "name": "RequestLab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "channel": "stable",
   "platforms": ["windows-x64"],
   "artifacts": { "gui": "requestlab.exe", "cli": "requestlab-cli.exe" }
@@ -109,6 +109,7 @@ workflow relies on `GITHUB_TOKEN`.
 | Symptom | Cause / fix |
 |---|---|
 | `unable to find library -lxcb` | Linux link step only; install the X11/xkbcommon dev packages |
+| The Windows icon is missing from the exe | `build.rs` needs a resource compiler (`rc.exe` with MSVC); the build still succeeds without one and logs a warning |
 | `ely-gpui-component` fails to resolve | It is a git dependency that must match `gpui-pre` 0.3.8 exactly; run `cargo update -p ely-gpui-component` |
 | `database is locked` | Another RequestLab instance is running; close it (WAL allows one writer) |
 | App starts but shows an empty sidebar | New data directory; create a collection or use the CLI |

@@ -6,6 +6,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use ely_gpui_component::primitives::IconName;
 use gpui::prelude::*;
 use gpui::{div, px, AppContext, Context, Entity, IntoElement, Render, SharedString, Window};
 use requestlab_core::{
@@ -877,12 +878,13 @@ impl Render for AppView {
                     .text_size(text::small())
                     .text_color(theme.error)
                     .child(banner)
-                    .child(components::icon_button(&theme, "✕").on_click(cx.listener(
-                        |view, _: &gpui::ClickEvent, _window, cx| {
+                    .child(components::icon_button(&theme, IconName::X).on_press(
+                        "app_view:881",
+                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
                             view.error_banner = None;
                             cx.notify();
-                        },
-                    ))),
+                        }),
+                    )),
             );
         }
 
@@ -898,10 +900,13 @@ impl Render for AppView {
                     .bottom(px(40.0))
                     .right(px(16.0))
                     .child(components::toast(&theme, message, kind))
-                    .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
-                        view.toast = None;
-                        cx.notify();
-                    })),
+                    .on_press(
+                        "app_view:902",
+                        cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                            view.toast = None;
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 

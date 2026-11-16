@@ -36,9 +36,17 @@ the window has exactly one GPUI and one component library. `theme.rs` maps Ely's
 palette onto this crate's tokens, Ely's segmented control is the section switch
 and the response tab bar, and Ely's buttons are the dialog actions.
 
-`InteractiveExt` attaches click handlers and scroll styles to plain elements and
+`InteractiveExt::on_press` gives a plain element a stable id and a click handler;
+GPUI 0.3 dispatches clicks only for elements that carry an id, and the handler
 consumes the click so a button inside a clickable row does not also trigger the
-row.
+row. Scrolling uses the same helper.
+
+Icons come from Ely's bundled Lucide set (`components::icon`,
+`components::icon_button`); no glyph or emoji is used as an interface icon.
+
+`tests/ui_smoke.rs` drives the real workspace on GPUI's test platform: it clicks
+toolbar controls, opens and dismisses the settings dialog, toggles the theme,
+opens a tab and types into focused fields.
 
 ## Licence
 
