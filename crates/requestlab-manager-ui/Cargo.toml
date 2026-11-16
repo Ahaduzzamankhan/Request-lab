@@ -1,0 +1,11 @@
+[package]
+name = "requestlab-manager-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared GPUI widgets for the RequestLab installer and updater"
+
+[dependencies]
+gpui = { workspace = true }
+requestlab-ui = { workspace = true }
+requestlab-manager = { workspace = true }

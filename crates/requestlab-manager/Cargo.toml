@@ -1,0 +1,27 @@
+[package]
+name = "requestlab-manager"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Install, update, verify and roll back RequestLab releases"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+ed25519-dalek = { workspace = true }
+zip = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+windows-sys = { version = "0.59.0", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }

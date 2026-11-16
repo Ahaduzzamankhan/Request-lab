@@ -1,0 +1,21 @@
+[package]
+name = "requestlab-updater"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RequestLab desktop updater"
+
+[[bin]]
+name = "requestlab-updater"
+path = "src/main.rs"
+
+[dependencies]
+gpui = { workspace = true }
+gpui_platform = { workspace = true }
+requestlab-ui = { workspace = true }
+requestlab-manager = { workspace = true }
+requestlab-manager-ui = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
