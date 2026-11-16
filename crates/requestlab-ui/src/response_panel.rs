@@ -4,6 +4,9 @@ use gpui::prelude::*;
 use gpui::{div, px, ClipboardItem, Context, IntoElement, SharedString};
 use requestlab_models::{human_duration, BodyKind, ResponseBody};
 
+use ely_gpui_component::buttons::SegmentedControl;
+use ely_gpui_component::theme::ControlSize;
+
 use crate::app_view::{AppView, ResponseTab};
 use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
@@ -151,24 +154,35 @@ impl AppView {
             .border_b_1()
             .border_color(theme.border);
 
+        // Ely's segmented control is the response tab bar: one thumb, keyboard
+        // navigation and focus rings come from the component library.
+        let mut segments = SegmentedControl::new("response-tabs", state.tab.label());
         for response_tab in ResponseTab::ALL {
-            let selected = state.tab == response_tab;
             let count = match response_tab {
                 ResponseTab::Headers => state.response.as_ref().map(|r| r.headers.len()),
                 ResponseTab::Cookies => state.response.as_ref().map(|r| r.cookies.len()),
                 _ => None,
             };
-            tabs = tabs.child(
-                components::tab_button(&theme, response_tab.label(), selected, count).on_click(
-                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                            tab.response.tab = response_tab;
-                        }
-                        cx.notify();
-                    }),
-                ),
-            );
+            let label = match count {
+                Some(count) => format!("{} {}", response_tab.label(), count),
+                None => response_tab.label().to_string(),
+            };
+            segments = segments.segment(response_tab.label(), label, None);
         }
+        tabs = tabs.child(segments.size(ControlSize::Sm).on_change(
+            components::entity_value_handler(cx, |view, value, cx| {
+                let chosen = ResponseTab::ALL
+                    .iter()
+                    .find(|response_tab| response_tab.label() == value)
+                    .copied();
+                if let Some(response_tab) = chosen {
+                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                        tab.response.tab = response_tab;
+                    }
+                    cx.notify();
+                }
+            }),
+        ));
 
         if matches!(state.tab, ResponseTab::Pretty | ResponseTab::Raw) && state.response.is_some() {
             tabs = tabs.child(

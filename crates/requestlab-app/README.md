@@ -5,7 +5,8 @@ The Windows desktop binary (`requestlab.exe`).
 ## Responsibility
 
 Process entry point: initialises tracing, opens storage on a Tokio runtime,
-creates the GPUI application and shows the single workspace window. Release
+creates the GPUI application through `gpui_platform`, loads the Ely component
+library's assets and fonts, and shows the single workspace window. Release
 builds use the `windows` subsystem so no console window appears.
 
 ## Files

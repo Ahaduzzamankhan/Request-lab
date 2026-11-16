@@ -3,7 +3,8 @@
 //! Every colour, radius and size used by the interface comes from here. The two
 //! palettes follow the product spec: charcoal dark and newspaper light.
 
-use gpui::{px, Pixels, Rgba};
+use ely_gpui_component::theme::{Mode as ElyMode, Palette};
+use gpui::{px, Hsla, Pixels, Rgba};
 use requestlab_models::HttpMethod;
 
 /// Which palette is active.
@@ -28,6 +29,20 @@ impl ThemeMode {
             ThemeMode::Light => "light",
         }
     }
+
+    /// The corresponding mode in Ely's global theme.
+    pub fn ely_mode(self) -> ElyMode {
+        match self {
+            ThemeMode::Dark => ElyMode::Dark,
+            ThemeMode::Light => ElyMode::Light,
+        }
+    }
+}
+
+/// Point Ely's global theme at `mode` so Ely components and RequestLab widgets
+/// always paint from the same palette.
+pub fn sync_ely(mode: ThemeMode, cx: &mut gpui::App) {
+    ely_gpui_component::theme::Theme::set_mode_now(mode.ely_mode(), cx);
 }
 
 /// A resolved palette plus the shared geometry values.
@@ -72,51 +87,43 @@ impl Theme {
         }
     }
 
+    /// RequestLab's dark tokens, taken from Ely's dark palette.
     pub fn dark() -> Self {
-        Self {
-            mode: ThemeMode::Dark,
-            background: rgb(0x17191D),
-            sidebar: rgb(0x202329),
-            surface: rgb(0x282C33),
-            elevated: rgb(0x30353E),
-            overlay: rgba(0x0E1013CC),
-            hover: rgba(0xFFFFFF0D),
-            active: rgba(0x8CA9FF1F),
-            text_primary: rgb(0xF1F2F4),
-            text_secondary: rgb(0xA0A5AE),
-            text_muted: rgb(0x6C717B),
-            border: rgb(0x373C45),
-            border_strong: rgb(0x4A505B),
-            accent: rgb(0x8CA9FF),
-            accent_muted: rgba(0x8CA9FF33),
-            success: rgb(0x62C995),
-            warning: rgb(0xE8B86D),
-            error: rgb(0xE47777),
-            info: rgb(0x7FC2E0),
-        }
+        Self::from_palette(ThemeMode::Dark, Palette::dark(false))
     }
 
+    /// RequestLab's light tokens, taken from Ely's light palette.
     pub fn light() -> Self {
+        Self::from_palette(ThemeMode::Light, Palette::light(false))
+    }
+
+    /// Map Ely's palette onto the tokens this interface draws with.
+    ///
+    /// There is exactly one source of colour: Ely's design tokens. Widgets that
+    /// come from Ely and widgets drawn here therefore cannot drift apart, and a
+    /// palette change in Ely reaches the whole window.
+    fn from_palette(mode: ThemeMode, palette: Palette) -> Self {
+        let color = |value: Hsla| Rgba::from(value);
         Self {
-            mode: ThemeMode::Light,
-            background: rgb(0xF5F6F8),
-            sidebar: rgb(0xEBEDF0),
-            surface: rgb(0xFFFFFF),
-            elevated: rgb(0xFFFFFF),
-            overlay: rgba(0x2428304D),
-            hover: rgba(0x2428300D),
-            active: rgba(0x416DD91F),
-            text_primary: rgb(0x242830),
-            text_secondary: rgb(0x707783),
-            text_muted: rgb(0x98A0AB),
-            border: rgb(0xDDE0E5),
-            border_strong: rgb(0xC3C8D0),
-            accent: rgb(0x416DD9),
-            accent_muted: rgba(0x416DD926),
-            success: rgb(0x2E9E68),
-            warning: rgb(0xB07C22),
-            error: rgb(0xC24B4B),
-            info: rgb(0x2A7C9B),
+            mode,
+            background: color(palette.bg),
+            sidebar: color(palette.sunken),
+            surface: color(palette.surface),
+            elevated: color(palette.overlay),
+            overlay: color(palette.backdrop),
+            hover: color(palette.hover),
+            active: color(palette.selection),
+            text_primary: color(palette.fg),
+            text_secondary: color(palette.fg_muted),
+            text_muted: color(palette.fg_subtle),
+            border: color(palette.border),
+            border_strong: color(palette.border_strong),
+            accent: color(palette.link),
+            accent_muted: with_alpha(color(palette.link), 0.22),
+            success: color(palette.success),
+            warning: color(palette.warning),
+            error: color(palette.danger),
+            info: color(palette.info),
         }
     }
 
@@ -269,6 +276,16 @@ mod tests {
         assert_eq!(ThemeMode::from_setting("dark"), ThemeMode::Dark);
         assert_eq!(ThemeMode::from_setting("nonsense"), ThemeMode::Dark);
         assert_eq!(ThemeMode::Light.as_setting(), "light");
+    }
+
+    #[test]
+    fn tokens_come_from_ely_palettes() {
+        let dark = Theme::dark();
+        let palette = Palette::dark(false);
+        assert_eq!(dark.background, Rgba::from(palette.bg));
+        assert_eq!(dark.error, Rgba::from(palette.danger));
+        assert_eq!(dark.text_primary, Rgba::from(palette.fg));
+        assert_eq!(ThemeMode::Light.ely_mode(), ElyMode::Light);
     }
 
     #[test]

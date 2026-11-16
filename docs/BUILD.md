@@ -109,7 +109,7 @@ workflow relies on `GITHUB_TOKEN`.
 | Symptom | Cause / fix |
 |---|---|
 | `unable to find library -lxcb` | Linux link step only; install the X11/xkbcommon dev packages |
-| `libc::ENOATTR` errors in `xattr` | The vendored patch in `vendor/xattr` handles this; keep the `[patch.crates-io]` entry |
+| `ely-gpui-component` fails to resolve | It is a git dependency that must match `gpui-pre` 0.3.8 exactly; run `cargo update -p ely-gpui-component` |
 | `database is locked` | Another RequestLab instance is running; close it (WAL allows one writer) |
 | App starts but shows an empty sidebar | New data directory; create a collection or use the CLI |
 | Corrupted database | The file is moved to `requestlab.sqlite.corrupt-<timestamp>` and a fresh one is created |

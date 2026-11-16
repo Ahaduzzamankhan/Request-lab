@@ -28,12 +28,17 @@ runtime and delivers the result back on the UI thread with
 `cx.spawn` + `oneshot`. The pass stops any stale response from overwriting a
 newer one by checking the execution id.
 
-## GPUI version
+## GPUI and Ely
 
-Pinned to `gpui 0.2.2`. APIs were verified against the crate source; in
-particular, `on_click`/`overflow_scroll` exist on `StatefulInteractiveElement`,
-so `InteractiveExt` attaches handlers directly to an element's interactivity
-state instead of inventing synthetic ids.
+Pinned to `gpui` 0.3.8, which crates.io publishes as `gpui-pre`, and to
+`ely-gpui-component`, whose components are built against the same snapshot, so
+the window has exactly one GPUI and one component library. `theme.rs` maps Ely's
+palette onto this crate's tokens, Ely's segmented control is the section switch
+and the response tab bar, and Ely's buttons are the dialog actions.
+
+`InteractiveExt` attaches click handlers and scroll styles to plain elements and
+consumes the click so a button inside a clickable row does not also trigger the
+row.
 
 ## Licence
 

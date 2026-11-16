@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
-use gpui::Application;
 use requestlab_core::AppService;
 use requestlab_ui::ThemeMode;
 use tokio::runtime::Runtime;
@@ -49,11 +48,23 @@ impl RequestLabApplication {
         let service = self.service.clone();
         let theme = self.theme;
 
-        Application::new().run(move |cx| {
-            requestlab_ui::bind_keys(cx);
-            window::open_main_window(cx, service, runtime, theme);
-            cx.activate(true);
-        });
+        gpui_platform::application()
+            .with_assets(ely_gpui_component::Assets)
+            .run(move |cx| {
+                // Ely loads its fonts and installs the design tokens every Ely
+                // component, and the whole palette in `requestlab-ui`, reads.
+                // Without it there is no interface to draw, so stop rather than
+                // paint a half-initialised window.
+                if let Err(error) = ely_gpui_component::init(cx) {
+                    tracing::error!(%error, "Ely component library failed to start");
+                    eprintln!("RequestLab could not load its interface assets: {error:#}");
+                    cx.quit();
+                    return;
+                }
+                requestlab_ui::bind_keys(cx);
+                window::open_main_window(cx, service, runtime, theme);
+                cx.activate(true);
+            });
 
         Ok(())
     }

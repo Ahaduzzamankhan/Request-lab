@@ -23,6 +23,7 @@ pub fn key_bindings() -> Vec<KeyBinding> {
         KeyBinding::new("ctrl-w", CloseTab, None),
         KeyBinding::new("ctrl-s", SaveRequest, None),
         KeyBinding::new("ctrl-shift-l", ToggleTheme, None),
+        KeyBinding::new("ctrl-b", ToggleSidebar, None),
         KeyBinding::new("escape", CancelRequest, None),
     ]
 }
@@ -34,6 +35,6 @@ mod tests {
     #[test]
     fn shortcuts_are_registered() {
         let bindings = key_bindings();
-        assert_eq!(bindings.len(), 6);
+        assert_eq!(bindings.len(), 7);
     }
 }

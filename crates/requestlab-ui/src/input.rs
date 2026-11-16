@@ -13,7 +13,7 @@ use gpui::{
     CursorStyle, Element, ElementId, ElementInputHandler, Entity, EntityInputHandler, FocusHandle,
     Focusable, GlobalElementId, InspectorElementId, IntoElement, KeyBinding, LayoutId, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, Render, SharedString,
-    Style, TextRun, UTF16Selection, Window,
+    Style, TextAlign, TextRun, UTF16Selection, Window,
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -437,7 +437,7 @@ impl TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        window.focus(&self.focus_handle);
+        window.focus(&self.focus_handle, cx);
         self.is_selecting = true;
         let offset = self.index_for_mouse_position(event.position);
         if event.modifiers.shift {
@@ -828,7 +828,7 @@ impl Element for TextElement {
         let shapes = std::mem::take(&mut prepaint.shapes);
         for (index, shape) in shapes.iter().enumerate() {
             let origin = point(bounds.left(), bounds.top() + line_height * index as f32);
-            let _ = shape.paint(origin, line_height, window, cx);
+            let _ = shape.paint(origin, line_height, TextAlign::Left, None, window, cx);
         }
 
         if focus_handle.is_focused(window) {

@@ -4,6 +4,9 @@ use gpui::prelude::*;
 use gpui::{div, px, Context, IntoElement, SharedString, Window};
 use requestlab_models::human_duration;
 
+use ely_gpui_component::buttons::SegmentedControl;
+use ely_gpui_component::theme::ControlSize;
+
 use crate::app_view::{AppView, Dialog, SidebarSection};
 use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
@@ -23,16 +26,25 @@ impl AppView {
             theme.text_muted
         };
 
-        let mut sections = div().flex().items_center().gap(px(2.0));
+        // Sidebar sections are an Ely segmented control; it owns the sliding
+        // thumb and keyboard handling.
+        let mut segments = SegmentedControl::new("sidebar-sections", self.sidebar.label());
         for section in SidebarSection::ALL {
-            sections = sections.child(
-                components::tab_button(&theme, section.label(), self.sidebar == section, None)
-                    .on_click(cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        view.sidebar = section;
-                        cx.notify();
-                    })),
-            );
+            segments = segments.segment(section.label(), section.label(), None);
         }
+        let sections = segments
+            .size(ControlSize::Sm)
+            .on_change(components::entity_value_handler(cx, |view, value, cx| {
+                let chosen = SidebarSection::ALL
+                    .iter()
+                    .find(|section| section.label() == value)
+                    .copied();
+                if let Some(section) = chosen {
+                    view.sidebar = section;
+                    view.sidebar_visible = true;
+                    cx.notify();
+                }
+            }));
 
         let tab_count = self.tabs.len();
         div()

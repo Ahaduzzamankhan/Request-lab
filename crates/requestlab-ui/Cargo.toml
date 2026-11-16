@@ -8,6 +8,7 @@ license.workspace = true
 requestlab-core = { workspace = true }
 requestlab-models = { workspace = true }
 gpui = { workspace = true }
+ely-gpui-component = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true }

@@ -4,12 +4,30 @@ use gpui::prelude::*;
 use gpui::{div, px, AnyElement, Context, IntoElement};
 use requestlab_models::HttpMethod;
 
+use ely_gpui_component::buttons::{Button as ElyButton, ButtonVariant as ElyButtonVariant};
+use ely_gpui_component::theme::ControlSize;
+
 use crate::app_view::{AppView, Dialog};
-use crate::components::InteractiveExt;
 use crate::components::{self, ButtonVariant};
+use crate::components::{entity_handler, InteractiveExt};
 use crate::theme::{radius, space, text, ThemeMode};
 
 impl AppView {
+    /// A dialog footer action, rendered with Ely's button.
+    fn dialog_button(
+        &self,
+        cx: &mut Context<Self>,
+        id: &'static str,
+        label: &'static str,
+        variant: ElyButtonVariant,
+        run: impl Fn(&mut AppView, &mut Context<AppView>) + 'static,
+    ) -> ElyButton {
+        ElyButton::new(id, label)
+            .variant(variant)
+            .size(ControlSize::Sm)
+            .on_click(entity_handler(cx, run))
+    }
+
     pub(crate) fn render_dialog(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let theme = self.theme;
         let dialog = self.dialog.as_ref()?;
@@ -46,22 +64,20 @@ impl AppView {
                             .items_center()
                             .justify_end()
                             .gap(space::sm())
-                            .child(
-                                components::button(&theme, "Cancel", ButtonVariant::Ghost)
-                                    .on_click(cx.listener(
-                                        |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.close_dialog(cx);
-                                        },
-                                    )),
-                            )
-                            .child(
-                                components::button(&theme, "Delete", ButtonVariant::Danger)
-                                    .on_click(cx.listener(
-                                        move |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.execute_destructive(action, cx);
-                                        },
-                                    )),
-                            ),
+                            .child(self.dialog_button(
+                                cx,
+                                "confirm-cancel",
+                                "Cancel",
+                                ElyButtonVariant::Ghost,
+                                |view, cx| view.close_dialog(cx),
+                            ))
+                            .child(self.dialog_button(
+                                cx,
+                                "confirm-delete",
+                                "Delete",
+                                ElyButtonVariant::Danger,
+                                move |view, cx| view.execute_destructive(action, cx),
+                            )),
                     );
             }
             Dialog::Prompt {
@@ -97,22 +113,20 @@ impl AppView {
                             .items_center()
                             .justify_end()
                             .gap(space::sm())
-                            .child(
-                                components::button(&theme, "Cancel", ButtonVariant::Ghost)
-                                    .on_click(cx.listener(
-                                        |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.close_dialog(cx);
-                                        },
-                                    )),
-                            )
-                            .child(
-                                components::button(&theme, "Save", ButtonVariant::Primary)
-                                    .on_click(cx.listener(
-                                        move |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.execute_prompt(action, cx);
-                                        },
-                                    )),
-                            ),
+                            .child(self.dialog_button(
+                                cx,
+                                "prompt-cancel",
+                                "Cancel",
+                                ElyButtonVariant::Ghost,
+                                |view, cx| view.close_dialog(cx),
+                            ))
+                            .child(self.dialog_button(
+                                cx,
+                                "prompt-save",
+                                "Save",
+                                ElyButtonVariant::Primary,
+                                move |view, cx| view.execute_prompt(action, cx),
+                            )),
                     );
             }
             Dialog::ChooseMethod { .. } => {
@@ -318,17 +332,21 @@ impl AppView {
                             .items_center()
                             .justify_end()
                             .gap(space::sm())
-                            .child(
-                                components::button(&theme, "Close", ButtonVariant::Secondary)
-                                    .on_click(cx.listener(
-                                        |view, _: &gpui::ClickEvent, _window, cx| {
-                                            view.close_dialog(cx);
-                                        },
-                                    )),
-                            ),
+                            .child(self.dialog_button(
+                                cx,
+                                "settings-close",
+                                "Close",
+                                ElyButtonVariant::Secondary,
+                                |view, cx| view.close_dialog(cx),
+                            )),
                     );
             }
         }
+
+        let card = card.on_click(cx.listener(|_view, _: &gpui::ClickEvent, _window, cx| {
+            // Keep the click on the card from reaching the backdrop.
+            cx.stop_propagation();
+        }));
 
         Some(
             div()
@@ -341,6 +359,9 @@ impl AppView {
                 .items_center()
                 .justify_center()
                 .bg(theme.overlay)
+                .on_click(cx.listener(|view, _: &gpui::ClickEvent, _window, cx| {
+                    view.close_dialog(cx);
+                }))
                 .child(card)
                 .into_any_element(),
         )

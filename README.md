@@ -1,7 +1,9 @@
 # RequestLab
 
 RequestLab is a native API development studio for Windows written in Rust with
-[GPUI](https://crates.io/crates/gpui). It sends HTTP requests, inspects responses
+[GPUI](https://gpui.rs), Zed's GPU-accelerated UI framework, taken from the
+`gpui-pre` 0.3.8 snapshot and styled with the
+[Ely](https://github.com/ZacharyZhang-NY/Ely-GPUI-Components) component library. It sends HTTP requests, inspects responses
 in detail, stores reusable request collections and environments in SQLite, and
 ships with a first-class command line interface that uses the same engine.
 
@@ -199,6 +201,5 @@ storage to make a test pass.
 
 ## License
 
-MIT - see [LICENSE](LICENSE). Third-party dependencies keep their own licenses;
-`cargo deny`-style attribution is out of scope for this repository, but the
-`vendor/xattr` patch keeps the upstream MIT/Apache-2.0 license files.
+MIT - see [LICENSE](LICENSE). Third-party dependencies keep their own licenses.
+Dependencies are pinned in `Cargo.toml`; `Cargo.lock` is committed.

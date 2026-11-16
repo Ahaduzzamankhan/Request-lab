@@ -18,12 +18,13 @@ use requestlab_models::{
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 
+use crate::actions;
 use crate::components::InteractiveExt;
 use crate::components::{self, ToastKind};
 use crate::editor_state::{RequestEditor, SavedLocation};
 use crate::input::{key_bindings, TextInput};
 use crate::json_tree;
-use crate::theme::{space, text, with_alpha, Theme, ThemeMode};
+use crate::theme::{space, sync_ely, text, with_alpha, Theme, ThemeMode};
 
 /// Which sidebar list is showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,6 +140,17 @@ impl Tab {
         }
     }
 
+    /// Abandon an in-flight request so a late result cannot overwrite whatever
+    /// replaces this tab's editor and response.
+    fn reset_execution(&mut self) {
+        if let Some(canceller) = self.cancel.as_mut() {
+            canceller.cancel();
+        }
+        self.cancel = None;
+        self.sending = false;
+        self.execution = None;
+    }
+
     fn apply_outcome(&mut self, outcome: ExecutionOutcome, cx: &mut Context<AppView>) {
         self.response.variables = outcome.variables.clone();
         self.response.history_id = outcome.history_id;
@@ -234,6 +246,7 @@ pub struct AppView {
     pub active_tab: usize,
 
     pub sidebar: SidebarSection,
+    pub sidebar_visible: bool,
     pub collections: Vec<CollectionTree>,
     pub expanded_collections: HashSet<Uuid>,
     pub expanded_folders: HashSet<Uuid>,
@@ -277,10 +290,12 @@ impl AppView {
         let timeout_seconds = service.settings().timeout_seconds;
         let history_limit = service.settings().history_limit;
 
+        sync_ely(mode, cx);
         let mut view = Self {
             tabs: vec![Tab::new(cx, &theme)],
             active_tab: 0,
             sidebar: SidebarSection::Collections,
+            sidebar_visible: true,
             collections: Vec::new(),
             expanded_collections: HashSet::new(),
             expanded_folders: HashSet::new(),
@@ -351,8 +366,9 @@ impl AppView {
                         this.environments = snapshot.environments;
                         this.active_environment = snapshot.active_environment;
                         this.history = snapshot.history;
-                        this.theme =
-                            Theme::for_mode(ThemeMode::from_setting(&snapshot.settings.theme));
+                        let mode = ThemeMode::from_setting(&snapshot.settings.theme);
+                        this.theme = Theme::for_mode(mode);
+                        sync_ely(mode, cx);
                         if let Some(environment) = this.active_environment {
                             this.load_environment(environment, cx);
                         }
@@ -512,14 +528,28 @@ impl AppView {
     }
 
     pub fn close_tab(&mut self, index: usize, cx: &mut Context<Self>) {
-        if self.tabs.len() == 1 {
+        if self.tabs.len() == 1 || index >= self.tabs.len() {
             return;
         }
+        self.tabs[index].reset_execution();
         self.tabs.remove(index);
-        if self.active_tab >= self.tabs.len() {
-            self.active_tab = self.tabs.len() - 1;
+        if self.active_tab > index {
+            // Everything after the closed tab shifted one slot left.
+            self.active_tab -= 1;
+        } else if self.active_tab == index {
+            self.active_tab = index.min(self.tabs.len() - 1);
         }
         cx.notify();
+    }
+
+    /// Ctrl+S: update a request that already has a home, otherwise ask where it
+    /// should be saved.
+    pub fn request_save(&mut self, cx: &mut Context<Self>) {
+        let index = self.active_tab;
+        match self.tabs.get(index).and_then(|tab| tab.editor.saved) {
+            Some(location) => self.save_request_to(location.collection_id, location.folder_id, cx),
+            None => self.open_dialog(Dialog::SaveRequest { tab: index }, cx),
+        }
     }
 
     pub fn send_request(&mut self, cx: &mut Context<Self>) {
@@ -553,7 +583,9 @@ impl AppView {
                         tab.apply_outcome(outcome, cx);
                     }
                 }
-                this.status_note = None;
+                if this.active_tab == index {
+                    this.status_note = None;
+                }
                 this.reload_history(cx);
                 cx.notify();
             },
@@ -568,6 +600,7 @@ impl AppView {
             }
             tab.sending = false;
             tab.cancel = None;
+            tab.execution = None;
             tab.response.error_category = Some("Cancelled".to_string());
             tab.response.error = Some("The request was cancelled.".to_string());
         }
@@ -599,6 +632,7 @@ impl AppView {
                             folder_id,
                         });
                         if let Some(tab) = this.tabs.get_mut(this.active_tab) {
+                            tab.reset_execution();
                             tab.editor = editor;
                             tab.response = ResponseState::new(cx);
                         }
@@ -619,6 +653,7 @@ impl AppView {
         folder_id: Option<Uuid>,
         cx: &mut Context<Self>,
     ) {
+        let index = self.active_tab;
         let request = self.active_tab_ref().editor.to_request(cx);
         let name = if request.display_name().trim().is_empty() {
             "Untitled request".to_string()
@@ -651,7 +686,7 @@ impl AppView {
             move |this, result, cx| {
                 match result {
                     Ok(saved_id) => {
-                        if let Some(tab) = this.tabs.get_mut(this.active_tab) {
+                        if let Some(tab) = this.tabs.get_mut(index) {
                             tab.editor.saved = Some(SavedLocation {
                                 saved_request_id: saved_id,
                                 collection_id,
@@ -672,6 +707,7 @@ impl AppView {
 
     pub fn set_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.theme = Theme::for_mode(mode);
+        sync_ely(mode, cx);
         let mut service = self.service.clone();
         let setting = mode.as_setting().to_string();
         self.spawn_core(
@@ -759,14 +795,59 @@ impl Render for AppView {
             .font_family(theme.sans_family())
             .text_size(text::body())
             .child(self.render_toolbar(cx))
+            .on_action(cx.listener(|view, _: &actions::SendRequest, _window, cx| {
+                view.send_request(cx);
+            }))
+            .on_action(cx.listener(|view, _: &actions::NewTab, _window, cx| {
+                view.new_tab(cx);
+            }))
+            .on_action(cx.listener(|view, _: &actions::CloseTab, _window, cx| {
+                let index = view.active_tab;
+                view.close_tab(index, cx);
+            }))
+            .on_action(cx.listener(|view, _: &actions::SaveRequest, _window, cx| {
+                view.request_save(cx);
+            }))
+            .on_action(cx.listener(|view, _: &actions::ToggleTheme, _window, cx| {
+                let next = if view.theme.mode == ThemeMode::Dark {
+                    ThemeMode::Light
+                } else {
+                    ThemeMode::Dark
+                };
+                view.set_theme(next, cx);
+            }))
+            .on_action(
+                cx.listener(|view, _: &actions::ToggleSidebar, _window, cx| {
+                    view.sidebar_visible = !view.sidebar_visible;
+                    cx.notify();
+                }),
+            )
+            .on_action(
+                cx.listener(|view, _: &actions::CancelRequest, _window, cx| {
+                    // Escape dismisses a dialog before it reaches the request.
+                    if view.dialog.is_some() {
+                        view.close_dialog(cx);
+                    } else {
+                        view.cancel_request(cx);
+                    }
+                }),
+            )
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .flex_1()
                     .min_h(px(0.0))
-                    .child(self.render_sidebar(cx))
-                    .child(components::vertical_divider(&theme))
+                    .child(if self.sidebar_visible {
+                        self.render_sidebar(cx).into_any_element()
+                    } else {
+                        div().into_any_element()
+                    })
+                    .child(if self.sidebar_visible {
+                        components::vertical_divider(&theme).into_any_element()
+                    } else {
+                        div().into_any_element()
+                    })
                     .child(
                         div()
                             .flex()

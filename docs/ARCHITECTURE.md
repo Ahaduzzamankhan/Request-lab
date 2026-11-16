@@ -35,6 +35,10 @@ Rules enforced by the layout:
 - `requestlab-models` has no I/O, no async and no third-party runtime.
 - Only `requestlab-storage` contains SQL.
 - `requestlab-http` never depends on GPUI or storage.
+- The interface runs on GPUI 0.3.8 (`gpui-pre` on crates.io) and the Ely
+  component library, which is built against that exact snapshot. `requestlab-ui`
+  derives every colour token from Ely's palette and uses Ely's segmented control
+  and buttons, so both share one theme and one app context.
 - `requestlab-ui` depends on `requestlab-core` only; core re-exports the small
   set of types the UI needs (`EnvironmentError`, `Canceller`,
   `cancellation_channel`) so the UI does not reach into the service crates.

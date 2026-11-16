@@ -8,18 +8,19 @@ use gpui::{div, px, CursorStyle, Div, SharedString};
 
 /// Interaction helpers for elements that are not addressable by id.
 ///
-/// GPUI 0.2.2 only exposes `on_click` and `overflow_scroll` on `Stateful`
-/// elements (`Div::id`), which would force a synthetic id at every call site.
-/// These helpers attach the same handlers and styles directly to the element's
-/// interactivity state; the renderer still inserts a hitbox because the click
-/// listener list is non-empty.
+/// Clicks are consumed by the element that declared the listener: a button
+/// nested in a clickable row (a delete icon in a history row, a close icon in a
+/// tab) must not also trigger the row's own handler.
 pub trait InteractiveExt: gpui::InteractiveElement + gpui::Styled + Sized {
     fn on_click(
         self,
         listener: impl Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static,
     ) -> Self {
         let mut this = self;
-        this.interactivity().on_click(listener);
+        this.interactivity().on_click(move |event, window, cx| {
+            listener(event, window, cx);
+            cx.stop_propagation();
+        });
         this
     }
 
@@ -36,6 +37,30 @@ pub trait InteractiveExt: gpui::InteractiveElement + gpui::Styled + Sized {
 }
 
 impl<T: gpui::InteractiveElement + gpui::Styled> InteractiveExt for T {}
+
+/// Adapt a click handler written against [`AppView`] for a GPUI 0.3 component
+/// (Ely's buttons and segments take `&mut App`, not a view context).
+pub fn entity_handler<V: 'static>(
+    cx: &gpui::Context<V>,
+    handler: impl Fn(&mut V, &mut gpui::Context<V>) + 'static,
+) -> impl Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static {
+    let entity = cx.entity();
+    move |_event, _window, cx| {
+        entity.update(cx, |view, cx| handler(view, cx));
+    }
+}
+
+/// Adapt a value handler for GPUI 0.3 components such as Ely's segmented control.
+pub fn entity_value_handler<V: 'static>(
+    cx: &gpui::Context<V>,
+    handler: impl Fn(&mut V, &str, &mut gpui::Context<V>) + 'static,
+) -> impl Fn(&gpui::SharedString, &mut gpui::Window, &mut gpui::App) + 'static {
+    let entity = cx.entity();
+    move |value, _window, cx| {
+        let value = value.to_string();
+        entity.update(cx, |view, cx| handler(view, &value, cx));
+    }
+}
 use requestlab_models::HttpMethod;
 
 use crate::theme::{radius, space, text, with_alpha, Theme};
