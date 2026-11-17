@@ -175,20 +175,26 @@ impl AppView {
             };
             segments = segments.segment(response_tab.label(), label, None);
         }
-        tabs = tabs.child(segments.size(ControlSize::Sm).on_change(
-            components::entity_value_handler(cx, |view, value, cx| {
-                let chosen = ResponseTab::ALL
-                    .iter()
-                    .find(|response_tab| response_tab.label() == value)
-                    .copied();
-                if let Some(response_tab) = chosen {
-                    if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                        tab.response.tab = response_tab;
+        let tabs_control =
+            segments
+                .size(ControlSize::Sm)
+                .on_change(components::entity_value_handler(cx, |view, value, cx| {
+                    let chosen = ResponseTab::ALL
+                        .iter()
+                        .find(|response_tab| response_tab.label() == value)
+                        .copied();
+                    if let Some(response_tab) = chosen {
+                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                            tab.response.tab = response_tab;
+                        }
+                        cx.notify();
                     }
-                    cx.notify();
-                }
-            }),
-        ));
+                }));
+        tabs = tabs.child(
+            div()
+                .debug_selector(|| "response-tabs".to_string())
+                .child(tabs_control),
+        );
 
         if matches!(state.tab, ResponseTab::Pretty | ResponseTab::Raw) && state.response.is_some() {
             tabs = tabs.child(

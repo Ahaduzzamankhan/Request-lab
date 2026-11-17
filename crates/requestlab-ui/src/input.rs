@@ -714,8 +714,15 @@ impl Element for TextElement {
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
         let input = self.input.read(cx);
+        // An empty multiline field paints its placeholder, so the height has to
+        // fit the placeholder's lines too.
+        let shown = if input.content.is_empty() {
+            input.placeholder.as_ref()
+        } else {
+            input.content.as_ref()
+        };
         let line_count = if input.multiline {
-            input.content.matches('\n').count() + 1
+            shown.matches('\n').count() + 1
         } else {
             1
         };
@@ -750,7 +757,16 @@ impl Element for TextElement {
             if focused {
                 (vec![SharedString::default()], false)
             } else {
-                (vec![input.placeholder.clone()], true)
+                // The placeholder may span several lines (a JSON body hint, for
+                // example) and each shape_line call must receive a single line.
+                (
+                    input
+                        .placeholder
+                        .split('\n')
+                        .map(|line| SharedString::from(line.to_string()))
+                        .collect(),
+                    true,
+                )
             }
         } else {
             (

@@ -142,15 +142,17 @@ impl AppView {
             let selected = editor.tab == editor_tab;
             let count = editor.count(editor_tab, cx);
             tab_row = tab_row.child(
-                components::tab_button(&theme, editor_tab.label(), selected, Some(count)).on_press(
-                    "editor:137",
-                    cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
-                        if let Some(tab) = view.tabs.get_mut(view.active_tab) {
-                            tab.editor.tab = editor_tab;
-                        }
-                        cx.notify();
-                    }),
-                ),
+                components::tab_button(&theme, editor_tab.label(), selected, Some(count))
+                    .debug_selector(move || format!("editor:137:{}", editor_tab.label()))
+                    .on_press(
+                        format!("editor:137:{}", editor_tab.label()),
+                        cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
+                            if let Some(tab) = view.tabs.get_mut(view.active_tab) {
+                                tab.editor.tab = editor_tab;
+                            }
+                            cx.notify();
+                        }),
+                    ),
             );
         }
 
@@ -247,7 +249,7 @@ impl AppView {
                     .py(px(2.0))
                     .rounded(radius::sm())
                     .child(components::toggle(&theme, enabled).on_press(
-                        "editor:239",
+                        format!("editor:239:{}", row_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 let rows = match editor_tab {
@@ -295,13 +297,13 @@ impl AppView {
                             .items_center()
                             .w(px(52.0))
                             .child(components::icon_button(&theme, IconName::Copy).on_press(
-                                "editor:286",
+                                format!("editor:286:{}", row_id),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.duplicate_row(editor_tab, row_id, cx);
                                 }),
                             ))
                             .child(components::icon_button(&theme, IconName::X).on_press(
-                                "editor:291",
+                                format!("editor:291:{}", row_id),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.remove_row(editor_tab, row_id);
@@ -343,8 +345,9 @@ impl AppView {
         for candidate in RequestBodyKind::ALL {
             kinds = kinds.child(
                 components::tab_button(&theme, candidate.label(), kind == candidate, None)
+                    .debug_selector(move || format!("editor:332:{}", candidate.label()))
                     .on_press(
-                        "editor:332",
+                        format!("editor:332:{}", candidate.label()),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 tab.editor.body_kind = candidate;
@@ -491,7 +494,7 @@ impl AppView {
                                     .child(row.value.clone()),
                             )
                             .child(components::icon_button(&theme, IconName::X).on_press(
-                                "editor:474",
+                                format!("editor:474:{}", row_id),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.remove_form_row(row_id);
@@ -541,8 +544,9 @@ impl AppView {
         for candidate in AuthKind::ALL {
             kinds = kinds.child(
                 components::tab_button(&theme, candidate.label(), kind == candidate, None)
+                    .debug_selector(move || format!("editor:523:{}", candidate.label()))
                     .on_press(
-                        "editor:523",
+                        format!("editor:523:{}", candidate.label()),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 let editor = &mut tab.editor;
@@ -645,7 +649,7 @@ impl AppView {
                                 None,
                             )
                             .on_press(
-                                "editor:623",
+                                format!("editor:623:{}", label),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                         tab.editor.api_key_location = location;

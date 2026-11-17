@@ -141,7 +141,7 @@ impl AppView {
                             .px(space::md())
                             .cursor(gpui::CursorStyle::PointingHand)
                             .on_press(
-                                "dialogs:142",
+                                format!("dialogs:142:{}", method.as_str()),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.set_method(method, cx);
                                 }),
@@ -182,7 +182,7 @@ impl AppView {
                     let count = environment.variables.len();
                     list = list.child(div().flex().items_center().justify_between().child(
                         components::tab_button(&theme, name, selected, Some(count)).on_press(
-                            "dialogs:180",
+                            format!("dialogs:180:{}", id),
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_active_environment(Some(id), cx);
                                 view.close_dialog(cx);
@@ -225,7 +225,7 @@ impl AppView {
                     for (collection_id, folder_id, label) in targets {
                         list = list.child(
                             components::tab_button(&theme, label, false, None).on_press(
-                                "dialogs:221",
+                                format!("dialogs:221:{collection_id}:{folder_id:?}"),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.save_request_to(collection_id, folder_id, cx);
                                     view.close_dialog(cx);
@@ -264,7 +264,7 @@ impl AppView {
                         )
                         .debug_selector(move || format!("timeout-{seconds}"))
                         .on_press(
-                            "dialogs:257",
+                            format!("dialogs:257:{}", seconds),
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_timeout(seconds, cx);
                             }),
@@ -287,7 +287,7 @@ impl AppView {
                         )
                         .debug_selector(move || format!("history-limit-{limit}"))
                         .on_press(
-                            "dialogs:278",
+                            format!("dialogs:278:{}", limit),
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.set_history_limit(limit, cx);
                             }),
@@ -310,7 +310,7 @@ impl AppView {
                         components::tab_button(&theme, label, self.theme.mode == mode, None)
                             .debug_selector(move || format!("theme-{}", mode.as_setting()))
                             .on_press(
-                                "dialogs:299",
+                                format!("dialogs:299:{}", mode.as_setting()),
                                 cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                     view.set_theme(mode, cx);
                                 }),

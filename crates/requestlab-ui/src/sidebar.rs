@@ -286,13 +286,13 @@ impl AppView {
                             .child(name.clone()),
                     )
                     .child(components::icon_button(&theme, IconName::Copy).on_press(
-                        "sidebar:278",
+                        format!("sidebar:278:{}", saved_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.duplicate_saved_request(saved_id, cx);
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::X).on_press(
-                        "sidebar:283",
+                        format!("sidebar:283:{}", saved_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
@@ -305,7 +305,7 @@ impl AppView {
                         }),
                     ))
                     .on_press(
-                        "sidebar:295",
+                        format!("sidebar:295:{}", saved_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_saved_request(saved_id, collection_id, folder_id, cx);
                         }),
@@ -360,7 +360,7 @@ impl AppView {
             if let Some(folder_id) = folder_id {
                 row = row
                     .child(components::icon_button(&theme, IconName::Plus).on_press(
-                        "sidebar:346",
+                        format!("sidebar:346:{depth}:{folder_id:?}"),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
@@ -377,7 +377,7 @@ impl AppView {
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::Pencil).on_press(
-                        "sidebar:362",
+                        format!("sidebar:362:{depth}:{folder_id:?}"),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
@@ -391,7 +391,7 @@ impl AppView {
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::X).on_press(
-                        "sidebar:375",
+                        format!("sidebar:375:{depth}:{folder_id:?}"),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
@@ -453,7 +453,7 @@ impl AppView {
             let selected = self.history_method == Some(method);
             methods = methods.child(
                 components::tab_button(&theme, method.as_str(), selected, None).on_press(
-                    "sidebar:435",
+                    format!("sidebar:435:{}", method.as_str()),
                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.history_method = if view.history_method == Some(method) {
                             None
@@ -480,7 +480,7 @@ impl AppView {
             };
             statuses = statuses.child(
                 components::tab_button(&theme, label, selected, None).on_press(
-                    "sidebar:461",
+                    format!("sidebar:461:{}", label),
                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.history_status = status;
                         view.reload_history(cx);
@@ -584,7 +584,7 @@ impl AppView {
                             .unwrap_or_else(|| "ERR".to_string()),
                     ))
                     .child(components::icon_button(&theme, IconName::X).on_press(
-                        "sidebar:560",
+                        format!("sidebar:560:{}", entry_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
@@ -598,7 +598,7 @@ impl AppView {
                         }),
                     ))
                     .on_press(
-                        "sidebar:573",
+                        format!("sidebar:573:{}", entry_id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             if let Some(tab) = view.tabs.get_mut(view.active_tab) {
                                 tab.editor.load(&request, cx);
@@ -688,13 +688,13 @@ impl AppView {
                             .child(variable_count.to_string()),
                     )
                     .child(components::icon_button(&theme, IconName::Check).on_press(
-                        "sidebar:659",
+                        format!("sidebar:659:{}", id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.set_active_environment(Some(id), cx);
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::Pencil).on_press(
-                        "sidebar:664",
+                        format!("sidebar:664:{}", id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
@@ -708,7 +708,7 @@ impl AppView {
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::Copy).on_press(
-                        "sidebar:677",
+                        format!("sidebar:677:{}", id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Prompt {
@@ -722,7 +722,7 @@ impl AppView {
                         }),
                     ))
                     .child(components::icon_button(&theme, IconName::X).on_press(
-                        "sidebar:690",
+                        format!("sidebar:690:{}", id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.open_dialog(
                                 Dialog::Confirm {
@@ -735,7 +735,7 @@ impl AppView {
                         }),
                     ))
                     .on_press(
-                        "sidebar:702",
+                        format!("sidebar:702:{}", id),
                         cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                             view.load_environment(id, cx);
                             cx.notify();
@@ -779,7 +779,7 @@ impl AppView {
                         .items_center()
                         .gap(px(3.0))
                         .child(components::toggle(&theme, enabled).on_press(
-                            "sidebar:742",
+                            format!("sidebar:742:{}", row_id),
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 if let Some(row) = view.env_rows.iter_mut().find(|r| r.id == row_id)
                                 {
@@ -836,7 +836,7 @@ impl AppView {
                                 })
                                 .child("★")
                                 .on_press(
-                                    "sidebar:798",
+                                    format!("sidebar:798:{}", row_id),
                                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                         if let Some(row) =
                                             view.env_rows.iter_mut().find(|r| r.id == row_id)
@@ -848,7 +848,7 @@ impl AppView {
                                 ),
                         )
                         .child(components::icon_button(&theme, IconName::X).on_press(
-                            "sidebar:809",
+                            format!("sidebar:809:{}", row_id),
                             cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                                 view.env_rows.retain(|row| row.id != row_id);
                                 cx.notify();

@@ -33,19 +33,23 @@ impl AppView {
         for section in SidebarSection::ALL {
             segments = segments.segment(section.label(), section.label(), None);
         }
-        let sections = segments
-            .size(ControlSize::Sm)
-            .on_change(components::entity_value_handler(cx, |view, value, cx| {
-                let chosen = SidebarSection::ALL
-                    .iter()
-                    .find(|section| section.label() == value)
-                    .copied();
-                if let Some(section) = chosen {
-                    view.sidebar = section;
-                    view.sidebar_visible = true;
-                    cx.notify();
-                }
-            }));
+        let sections = div()
+            .debug_selector(|| "sidebar-sections".to_string())
+            .child(
+                segments
+                    .size(ControlSize::Sm)
+                    .on_change(components::entity_value_handler(cx, |view, value, cx| {
+                        let chosen = SidebarSection::ALL
+                            .iter()
+                            .find(|section| section.label() == value)
+                            .copied();
+                        if let Some(section) = chosen {
+                            view.sidebar = section;
+                            view.sidebar_visible = true;
+                            cx.notify();
+                        }
+                    })),
+            );
 
         let tab_count = self.tabs.len();
         div()
@@ -221,7 +225,7 @@ impl AppView {
                 )
                 .child(div().truncate().child(title))
                 .on_press(
-                    "toolbar:211",
+                    format!("toolbar:211:{}", index),
                     cx.listener(move |view, _: &gpui::ClickEvent, _window, cx| {
                         view.active_tab = index;
                         cx.notify();
@@ -230,7 +234,7 @@ impl AppView {
 
             if self.tabs.len() > 1 {
                 item = item.child(components::icon_button(&theme, IconName::X).on_press(
-                    "toolbar:217",
+                    format!("toolbar:217:{}", index),
                     cx.listener(move |view, event: &gpui::ClickEvent, window, cx| {
                         if event.click_count() > 0 {
                             view.close_tab(index, cx);
