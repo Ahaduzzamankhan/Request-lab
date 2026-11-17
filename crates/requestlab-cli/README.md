@@ -68,3 +68,24 @@ and environment resolution.
 ## Licence
 
 MIT - see [LICENSE](LICENSE).
+
+## cURL import
+
+Paste a cURL command and RequestLab turns it into a request. Unsupported options
+fail with a readable error instead of being dropped.
+
+```text
+requestlab-cli send --curl "curl -X POST https://api.example.com/users \
+  -H 'Content-Type: application/json' -d '{\"name\":\"Ada\"}'"
+
+# Inspect what would be sent, without sending it
+requestlab-cli curl "curl -u user:secret 'https://api.example.com/search?q=rust'"
+requestlab-cli --json curl "curl -I https://api.example.com"
+```
+
+Supported options: `-X/--request`, `--url`, `-H/--header`, `-d/--data*`,
+`--data-urlencode`, `-F/--form`, `-u/--user`, `--bearer`, `-b/--cookie`,
+`-A/--user-agent`, `-e/--referer`, `-I/--head`, `-G/--get`, plus the connection
+flags that do not change the saved request (`-L`, `-k`, `-s`, `-o`, `-m`,
+`--retry`, ...). A body without `-X` implies POST, `Authorization: Bearer ...`
+becomes the auth field, and query strings move into the parameter table.

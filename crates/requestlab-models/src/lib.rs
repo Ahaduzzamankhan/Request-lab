@@ -5,6 +5,7 @@
 
 pub mod collection;
 pub mod common;
+pub mod curl;
 pub mod environment;
 pub mod history;
 pub mod request;
@@ -19,6 +20,7 @@ pub use common::{
     redact_url, truncate_utf8, validate_url, RequestField, ValidationIssue, DEFAULT_HISTORY_LIMIT,
     MAX_FOLDER_DEPTH, MAX_HISTORY_BODY_BYTES, MAX_RESPONSE_BYTES, REDACTED,
 };
+pub use curl::CurlError;
 pub use environment::{Environment, EnvironmentVariable};
 pub use history::{HistoryEntry, HistoryQuery, HistoryStatusFilter};
 pub use request::{

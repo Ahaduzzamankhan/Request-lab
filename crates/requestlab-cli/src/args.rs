@@ -9,6 +9,10 @@ use requestlab_models::{ApiKeyLocation, HttpMethod, RequestBodyKind};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Send(SendOptions),
+    /// Parse a cURL command and print the request without sending it.
+    Curl {
+        command: String,
+    },
     CollectionsList,
     CollectionsCreate {
         name: String,
@@ -104,6 +108,8 @@ pub struct SendOptions {
     pub timeout_seconds: Option<u64>,
     pub print_body: bool,
     pub fail_on_error_status: bool,
+    /// A cURL command to import instead of the individual options.
+    pub curl: Option<String>,
 }
 
 impl Default for SendOptions {
@@ -121,6 +127,7 @@ impl Default for SendOptions {
             timeout_seconds: None,
             print_body: true,
             fail_on_error_status: false,
+            curl: None,
         }
     }
 }
@@ -196,6 +203,7 @@ USAGE:
 
 COMMANDS:
     send <url>                    Send an HTTP request
+    curl <command>                Show how a cURL command is understood
     collections list              List collections
     collections create <name>     Create a collection
     collections delete <id>       Delete a collection
@@ -224,6 +232,7 @@ SEND OPTIONS:
     -t, --timeout <SECONDS>       Override the stored timeout
         --no-body                 Do not print the response body
     -f, --fail                    Exit with status 22 on a 4xx/5xx response
+        --curl <COMMAND>          Import a cURL command instead of the flags
 
 HISTORY OPTIONS:
         --limit <N>               Rows to show (default 20)
@@ -289,6 +298,14 @@ fn parse_command(args: &[String]) -> Result<Command, String> {
     match head.as_str() {
         "help" => Ok(Command::Help),
         "send" => parse_send(tail),
+        "curl" => {
+            if tail.is_empty() {
+                return Err("curl needs a command, for example: curl \"curl https://example.com\"".to_string());
+            }
+            Ok(Command::Curl {
+                command: tail.join(" "),
+            })
+        }
         "collections" => match tail.first().map(String::as_str) {
             Some("list") => Ok(Command::CollectionsList),
             Some("create") => Ok(Command::CollectionsCreate {
@@ -513,6 +530,7 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
             }
             "--no-body" => options.print_body = false,
             "-f" | "--fail" => options.fail_on_error_status = true,
+            "--curl" => options.curl = Some(take("--curl")?),
             other if other.starts_with('-') && other.len() > 1 => {
                 return Err(format!("unknown send option '{other}'"));
             }
@@ -520,10 +538,23 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
         }
     }
 
-    options.url = positionals
-        .into_iter()
-        .next()
-        .ok_or("send needs a URL, for example: requestlab-cli send https://example.com")?;
+    // With --curl the URL comes from the imported command, not from the
+    // positional argument.
+    options.url = match positionals.into_iter().next() {
+        Some(url) => url,
+        None if options.curl.is_some() => String::new(),
+        None => {
+            return Err(
+                "send needs a URL, for example: requestlab-cli send https://example.com"
+                    .to_string(),
+            )
+        }
+    };
+    if options.curl.is_some()
+        && (!options.headers.is_empty() || options.body.is_some() || !options.params.is_empty())
+    {
+        return Err("--curl already carries the request; drop the other send options".to_string());
+    }
 
     if options.body.is_some() && options.body_kind == RequestBodyKind::FormUrlEncoded {
         return Err("use --form for URL-encoded bodies instead of --data".to_string());
@@ -541,6 +572,38 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn send_accepts_a_curl_command() {
+        let Command::Send(options) = parse([
+            "send",
+            "--curl",
+            "curl -X POST https://api.example.com -H 'X-Trace: 1'",
+        ])
+        .unwrap()
+        .command
+        else {
+            panic!("expected send");
+        };
+        let command = options.curl.expect("--curl is captured");
+        assert!(command.starts_with("curl -X POST"), "{command}");
+    }
+
+    #[test]
+    fn curl_preview_takes_the_whole_command() {
+        let Command::Curl { command } = parse(["curl", "curl", "-I", "https://example.com"])
+            .unwrap()
+            .command
+        else {
+            panic!("expected curl");
+        };
+        assert_eq!(command, "curl -I https://example.com");
+    }
+
+    #[test]
+    fn curl_without_a_command_is_a_usage_error() {
+        assert!(parse(["curl"]).is_err());
+    }
 
     #[test]
     fn parses_a_full_send_invocation() {

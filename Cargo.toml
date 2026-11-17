@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT"
 
@@ -64,7 +64,7 @@ requestlab-collections = { path = "crates/requestlab-collections" }
 requestlab-environments = { path = "crates/requestlab-environments" }
 requestlab-core = { path = "crates/requestlab-core" }
 requestlab-ui = { path = "crates/requestlab-ui" }
-requestlab-cli = { path = "crates/requestlab-cli", version = "0.1.2" }
+requestlab-cli = { path = "crates/requestlab-cli", version = "0.1.3" }
 requestlab-manager-ui = { path = "crates/requestlab-manager-ui" }
 requestlab-manager = { path = "crates/requestlab-manager" }
 requestlab-updater = { path = "crates/requestlab-updater" }

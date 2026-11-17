@@ -5697,7 +5697,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "requestlab-app"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "ely-gpui-component",
@@ -5718,7 +5718,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-cli"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "requestlab-core",
@@ -5733,7 +5733,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-collections"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-models",
  "requestlab-storage",
@@ -5745,7 +5745,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-core"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-collections",
  "requestlab-environments",
@@ -5760,7 +5760,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-environments"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-models",
  "requestlab-storage",
@@ -5772,7 +5772,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-http"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-models",
  "reqwest",
@@ -5786,7 +5786,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-manager"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -5807,14 +5807,14 @@ dependencies = [
 
 [[package]]
 name = "requestlab-manager-ui"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-manager",
 ]
 
 [[package]]
 name = "requestlab-models"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "chrono",
  "serde",
@@ -5825,7 +5825,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-storage"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "requestlab-models",
  "serde_json",
@@ -5838,7 +5838,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-ui"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ely-gpui-component",
  "gpui-pre",
@@ -5853,7 +5853,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-update-helper"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "chrono",
  "requestlab-manager",
@@ -5865,7 +5865,7 @@ dependencies = [
 
 [[package]]
 name = "requestlab-updater"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "ely-gpui-component",

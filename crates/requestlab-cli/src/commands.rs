@@ -86,6 +86,7 @@ async fn execute(
             crate::VERSION
         ))),
         Command::Send(options) => send(&service, json, options).await,
+        Command::Curl { command } => curl_preview(json, &command),
         Command::CollectionsList => {
             let trees = service
                 .collections()
@@ -336,11 +337,62 @@ async fn execute(
     }
 }
 
+/// Show how a cURL command is understood, without sending anything.
+fn curl_preview(json: bool, command: &str) -> Result<CommandOutput, CliError> {
+    let request = requestlab_models::curl::parse(command)
+        .map_err(|error| CliError::usage(error.to_string()))?;
+    let text = if json {
+        serde_json::json!({
+            "method": request.method.as_str(),
+            "url": request.url,
+            "query": request.query_params.iter()
+                .map(|parameter| serde_json::json!({ "key": parameter.key, "value": parameter.value }))
+                .collect::<Vec<_>>(),
+            "headers": request.headers.iter()
+                .map(|header| serde_json::json!({ "key": header.key, "value": header.value }))
+                .collect::<Vec<_>>(),
+            "body": request.body,
+            "authentication": request.authentication,
+        })
+        .to_string()
+    } else {
+        let mut lines = vec![format!(
+            "{} {}",
+            request.method.as_str(),
+            requestlab_models::curl::full_url(&request)
+        )];
+        for header in &request.headers {
+            lines.push(format!("{}: {}", header.key, header.value));
+        }
+        match &request.body {
+            requestlab_models::RequestBody::None => {}
+            requestlab_models::RequestBody::Json { content }
+            | requestlab_models::RequestBody::Raw { content, .. } => {
+                lines.push(String::new());
+                lines.push(content.clone());
+            }
+            requestlab_models::RequestBody::FormUrlEncoded { fields } => {
+                lines.push(String::new());
+                for field in fields {
+                    lines.push(format!("{}={}", field.key, field.value));
+                }
+            }
+        }
+        lines.join("\n")
+    };
+    Ok(CommandOutput::ok(text))
+}
+
 async fn send(
     service: &AppService,
     json: bool,
     options: SendOptions,
 ) -> Result<CommandOutput, CliError> {
+    if let Some(command) = &options.curl {
+        let request = requestlab_models::curl::parse(command)
+            .map_err(|error| CliError::usage(error.to_string()))?;
+        return send_request(service, json, request, &options).await;
+    }
     let mut request = Request::new(options.method, options.url.clone());
     request.headers = options
         .headers
@@ -387,6 +439,15 @@ async fn send(
         },
     };
 
+    send_request(service, json, request, &options).await
+}
+
+async fn send_request(
+    service: &AppService,
+    json: bool,
+    request: Request,
+    options: &SendOptions,
+) -> Result<CommandOutput, CliError> {
     let issues = request.validate();
     if !issues.is_empty() {
         let message = issues
