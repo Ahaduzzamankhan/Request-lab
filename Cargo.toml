@@ -66,6 +66,7 @@ requestlab-environments = { path = "crates/requestlab-environments" }
 requestlab-core = { path = "crates/requestlab-core" }
 requestlab-ui = { path = "crates/requestlab-ui" }
 requestlab-cli = { path = "crates/requestlab-cli", version = "0.1.2" }
+requestlab-manager-ui = { path = "crates/requestlab-manager-ui" }
 requestlab-manager = { path = "crates/requestlab-manager" }
 
 

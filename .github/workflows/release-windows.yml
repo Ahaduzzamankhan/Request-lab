@@ -59,6 +59,17 @@ jobs:
           fi
           echo "version $tag is unreleased"
 
+      - name: Require the release signing key
+        shell: bash
+        env:
+          REQUESTLAB_SIGNING_KEY: ${{ secrets.REQUESTLAB_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REQUESTLAB_SIGNING_KEY:-}" ]; then
+            echo "::error::REQUESTLAB_SIGNING_KEY is not set. Add the release signing seed as a repository secret; every published build must be signed because the application refuses unsigned manifests."
+            exit 1
+          fi
+
       - name: Formatting
         run: cargo fmt --all -- --check
 
@@ -71,18 +82,43 @@ jobs:
           set -euo pipefail
           cargo test -p requestlab-models -p requestlab-http -p requestlab-storage \
                      -p requestlab-collections -p requestlab-environments \
-                     -p requestlab-core -p requestlab-cli
+                     -p requestlab-core -p requestlab-cli -p requestlab-manager \
+                     -p requestlab-manager-ui -p requestlab-update-helper \
+                     -p requestlab-installer -p requestlab-updater
           cargo build --workspace --all-targets
 
-      - name: Build release binaries
-        run: cargo build --release -p requestlab-app -p requestlab-cli
+      # The update helper is built first so the application can embed the public
+      # key that verifies this release. The seed itself is never printed.
+      - name: Build the update helper
+        run: cargo build --release -p requestlab-update-helper
 
-      - name: Verify the single executable runs the CLI
+      - name: Derive the release public key
+        shell: bash
+        env:
+          REQUESTLAB_SIGNING_KEY: ${{ secrets.REQUESTLAB_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          public_key="$(./target/release/requestlab-update-helper.exe public-key)"
+          if [ -z "$public_key" ]; then
+            echo "::error::could not derive the release public key from the signing seed"
+            exit 1
+          fi
+          echo "REQUESTLAB_MANIFEST_PUBLIC_KEY=$public_key" >> "$GITHUB_ENV"
+
+      - name: Build the signed application
+        run: |
+          cargo build --release -p requestlab-app -p requestlab-cli -p requestlab-installer -p requestlab-updater
+
+      - name: Verify every executable starts
         shell: bash
         run: |
           set -euo pipefail
           ./target/release/requestlab.exe --version
+          ./target/release/requestlab.exe --help | head -n 3
           ./target/release/requestlab-cli.exe --version
+          ./target/release/requestlab-installer.exe --version
+          ./target/release/requestlab-updater.exe --version
+          ./target/release/requestlab-update-helper.exe --version
 
       - name: Package artifacts
         shell: bash
@@ -91,22 +127,47 @@ jobs:
           mkdir -p dist
           cp target/release/requestlab.exe dist/
           cp target/release/requestlab-cli.exe dist/
+          cp target/release/requestlab-installer.exe dist/
+          cp target/release/requestlab-updater.exe dist/
+          cp target/release/requestlab-update-helper.exe dist/
           cp README.md LICENSE version.json dist/
           cd dist
-          sha256sum requestlab.exe requestlab-cli.exe > SHA256SUMS.txt
+          sha256sum requestlab.exe requestlab-cli.exe requestlab-installer.exe \
+                    requestlab-updater.exe requestlab-update-helper.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Package the single-file download
         shell: pwsh
         run: |
-          # One download carries the desktop application and the CLI: the same
-          # executable opens the window with no arguments and runs a command when
-          # arguments are supplied.
-          $name = "requestlab-${{ steps.version.outputs.version }}-windows-x86_64.zip"
-          Compress-Archive -Path dist/requestlab.exe, README.md, LICENSE, version.json -DestinationPath "dist/$name"
+          # The manifest names this file, so the name is fixed. It carries the
+          # desktop application (which is also the CLI), the installer, the
+          # updater and the helper.
+          $name = "requestlab-windows-x86_64.zip"
+          Compress-Archive -Path dist/requestlab.exe, dist/requestlab-cli.exe, `
+              dist/requestlab-installer.exe, dist/requestlab-updater.exe, `
+              dist/requestlab-update-helper.exe, README.md, LICENSE, version.json `
+              -DestinationPath "dist/$name"
           $hash = (Get-FileHash "dist/$name" -Algorithm SHA256).Hash.ToLower()
           Add-Content -Path dist/SHA256SUMS.txt -Value "$hash  $name"
           Get-Content dist/SHA256SUMS.txt
+
+      - name: Build and sign the release manifest
+        shell: bash
+        env:
+          REQUESTLAB_SIGNING_KEY: ${{ secrets.REQUESTLAB_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          helper=./target/release/requestlab-update-helper.exe
+          "$helper" build-manifest \
+            --dist dist \
+            --version-for "${{ steps.version.outputs.version }}" \
+            --channel "${{ steps.version.outputs.channel }}" \
+            --notes-url "https://github.com/${{ github.repository }}/releases/tag/$tag" \
+            --out dist/manifest.json
+          "$helper" sign-manifest --manifest dist/manifest.json --out dist/manifest.json.sig
+          sha256sum dist/manifest.json dist/manifest.json.sig >> dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -137,17 +198,10 @@ jobs:
           files: |
             dist/requestlab.exe
             dist/requestlab-cli.exe
-            dist/requestlab-${{ steps.version.outputs.version }}-windows-x86_64.zip
+            dist/requestlab-installer.exe
+            dist/requestlab-updater.exe
+            dist/requestlab-update-helper.exe
+            dist/requestlab-windows-x86_64.zip
+            dist/manifest.json
+            dist/manifest.json.sig
             dist/SHA256SUMS.txt
-            dist/SHA256SUMS.txt
-          fail_on_unmatched_files: true
-          body: |
-            RequestLab ${{ steps.version.outputs.version }} (${{ steps.version.outputs.channel }})
-
-            Windows x64 release.
-
-            - `requestlab.exe` - desktop application
-            - `requestlab-cli.exe` - command line interface
-            - `SHA256SUMS.txt` - checksums
-
-            Verify with: `certutil -hashfile requestlab.exe SHA256`

@@ -205,3 +205,56 @@ Still outstanding (honest limits):
 - `release-windows.yml` has not been run. This environment cannot create tags or
   dispatch workflows; it must be started from the Actions tab (or by pushing a
   `v0.1.2` tag).
+
+## Round: installer, updater, helper and their UI model are implemented
+
+The four scaffolded crates now contain real implementations against the tested
+`requestlab-manager` engine; none of them is a placeholder any more.
+
+- **`requestlab-manager-ui`** — the presentation model shared by both windows:
+  `FlowState` with stage line, bounded log (400 lines), transfer percentage and
+  rate, warnings, and terminal success/failure with retry, plus `ReleaseInfo`
+  formatting. No GUI dependency, so all of it is unit tested (12 tests).
+- **`requestlab-installer`** — GPUI setup window (install location, live stage,
+  progress bar, log tail, retry) and a `--silent` console mode. Flow: GitHub
+  release discovery → signed manifest verification → verified download →
+  transactional apply → shortcuts/registry → optional launch. Arguments are
+  parsed and tested (8 tests).
+- **`requestlab-updater`** — window that checks on open and shows the available
+  version and download size; `--check` reports availability (exit 0 = update,
+  3 = current, 1 = error) and `--silent` installs, optionally handing the staged
+  update to the helper with `--pid`. Arguments and installed-version detection
+  are tested (7 tests).
+- **`requestlab-update-helper`** — applies a staged update after the application
+  exits: waits for the process, recovers an interrupted attempt, applies
+  transactionally, logs to `<install-dir>/work/update-helper.log`, optionally
+  relaunches. It also carries the release tooling: `build-manifest`,
+  `sign-manifest`, `public-key` and `generate-key` (owner-only seed permissions,
+  public half installed into the trust directory, self-verification after
+  generation). 16 tests covering refusal paths, manifest generation and a
+  sign/verify round trip.
+- **Release pipeline** — builds all five executables, derives the release public
+  key from `REQUESTLAB_SIGNING_KEY`, compiles it into the application, packages
+  `requestlab-windows-x86_64.zip`, then builds and signs `manifest.json`.
+  Missing key or missing crate documentation fails the job with a clear message.
+- **CI** — the Windows job now runs the manager, manager-UI, helper, installer
+  and updater tests and smoke-tests every management executable; the new crates
+  have the README/LICENSE files the repository check requires.
+
+Verified on this Linux host: `cargo fmt --all -- --check`, `cargo clippy
+--workspace --all-targets -- -D warnings`, all new crate tests (manager 57,
+manager-ui 12, helper 16, installer 8, updater 7) and every management binary's
+`--version`/`--help`. An end-to-end tooling run generated a key, printed its
+public half, built and signed a manifest, and both helper refusal paths exited 1
+with readable errors.
+
+Not verified / remaining:
+
+- The installer and updater **windows** compile but have not been opened: this
+  host has no display. Their non-GUI flows are the tested ones.
+- A live release check could not complete here: GitHub's API rate limit was
+  already exhausted for this IP. The error surfaced correctly (`--check` exits 1).
+- No release has been published from here, and `REQUESTLAB_SIGNING_KEY` is not
+  configured, so the release workflow still needs that secret before it can run.
+- The application has no in-app "check for updates" entry yet; it ships the
+  updater executable, which the user (or an installer shortcut) starts.

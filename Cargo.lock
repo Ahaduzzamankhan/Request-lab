@@ -5781,10 +5781,13 @@ name = "requestlab-installer"
 version = "0.1.2"
 dependencies = [
  "anyhow",
+ "ely-gpui-component",
  "gpui-pre",
  "gpui-pre-platform",
  "requestlab-manager",
+ "requestlab-manager-ui",
  "requestlab-ui",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5815,7 +5818,7 @@ dependencies = [
 name = "requestlab-manager-ui"
 version = "0.1.2"
 dependencies = [
- "gpui-pre",
+ "requestlab-manager",
 ]
 
 [[package]]
@@ -5861,7 +5864,12 @@ dependencies = [
 name = "requestlab-update-helper"
 version = "0.1.2"
 dependencies = [
+ "chrono",
+ "requestlab-manager",
+ "serde_json",
+ "tempfile",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5869,10 +5877,13 @@ name = "requestlab-updater"
 version = "0.1.2"
 dependencies = [
  "anyhow",
+ "ely-gpui-component",
  "gpui-pre",
  "gpui-pre-platform",
  "requestlab-manager",
+ "requestlab-manager-ui",
  "requestlab-ui",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",

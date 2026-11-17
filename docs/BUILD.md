@@ -88,18 +88,43 @@ do not assume a number that has not been measured.
 4. Run `scripts/verify-version.sh` (used by CI as well).
 5. Commit: `chore: release vX.Y.Z`.
 
+## Release signing
+
+The application refuses unsigned update manifests, so a release needs an
+Ed25519 key pair:
+
+```bash
+# once, on a trusted machine
+cargo run -p requestlab-update-helper -- generate-key --out keys \
+    --trust-dir "%APPDATA%\RequestLab\trusted-keys"
+```
+
+`keys/signing-key.txt` is the secret seed. Store its contents (and nothing else)
+in the repository secret `REQUESTLAB_SIGNING_KEY`. `keys/public-key.txt` is the
+public half; the workflow derives it from the seed and compiles it into the
+application, so released builds trust exactly that key. Losing the seed means
+shipping a new key in a new build; leaking it means anyone can sign an update.
+
 ## Release process
 
 `.github/workflows/release-windows.yml` runs on a `v*` tag or manual dispatch:
 
 1. Validates `version.json` and that it matches `Cargo.toml`.
-2. Refuses to continue if the tag already exists.
-3. Runs formatting, clippy-like checks, and the full test suite.
-4. Builds `requestlab.exe` and `requestlab-cli.exe` in release mode on
-   `windows-latest`.
-5. Writes `SHA256SUMS.txt`.
-6. Uploads a build artifact, creates the tag (on manual dispatch) and publishes
-   the GitHub Release with the binaries, checksums and generated notes.
+2. Refuses to continue if the tag already exists, or if
+   `REQUESTLAB_SIGNING_KEY` is not configured.
+3. Runs formatting, workspace clippy with `-D warnings`, and the test suite.
+4. Builds the update helper first, derives the public key, then builds
+   `requestlab.exe`, `requestlab-cli.exe`, `requestlab-installer.exe`,
+   `requestlab-updater.exe` and `requestlab-update-helper.exe` with that key
+   compiled in.
+5. Verifies every executable answers `--version`.
+6. Packages `requestlab-windows-x86_64.zip` (all five executables plus README,
+   LICENSE and version.json) and writes `SHA256SUMS.txt`.
+7. Builds `manifest.json` for the zip, signs it to `manifest.json.sig`, and adds
+   both checksums.
+8. Uploads a build artifact, creates the tag (on manual dispatch) and publishes
+   the GitHub Release with the binaries, the zip, the manifest, its signature and
+   the checksums.
 
 Required permissions are `contents: write`; no personal token is used - the
 workflow relies on `GITHUB_TOKEN`.

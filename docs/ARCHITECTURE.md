@@ -30,6 +30,24 @@
                     requestlab-models
 ```
 
+Management front ends have their own chain and never touch the application's
+data path:
+
+```
+requestlab-installer   requestlab-updater
+        │                     │
+        └──────────┬──────────┘
+                   ▼
+          requestlab-manager-ui
+                   │
+                   ▼
+           requestlab-manager  ──►  GitHub API, signed manifests, filesystem
+```
+
+`requestlab-manager-ui` holds only presentation state, so every progress and
+failure rule is testable without a display. The `requestlab-update-helper`
+process runs the same engine after the application has exited.
+
 Rules enforced by the layout:
 
 - `requestlab-models` has no I/O, no async and no third-party runtime.
@@ -59,6 +77,11 @@ Rules enforced by the layout:
 | `requestlab-ui` | Theme, components, text editor element, panels, dialogs, view state |
 | `requestlab-app` | Process bootstrap, window creation, logging, shutdown |
 | `requestlab-cli` | Argument parsing, command execution, text/JSON rendering, exit codes |
+| `requestlab-manager` | Install/update engine: manifest parsing, Ed25519 verification, GitHub releases, verified downloads, transactional install, rollback, update staging, platform integration (shortcuts, registry, process waits) |
+| `requestlab-manager-ui` | Installer/updater state model: stages, bounded log, progress, warnings, terminal result (no GPUI dependency, unit tested) |
+| `requestlab-installer` | Setup window and `--silent` mode; discovers, verifies and installs a release |
+| `requestlab-updater` | Update window, `--check` and `--silent`; stages verified updates and hands them to the helper |
+| `requestlab-update-helper` | Applies a staged update after the app exits, writes a recovery log, and carries the release tooling (`build-manifest`, `sign-manifest`, `public-key`, `generate-key`) |
 
 ## Application state
 

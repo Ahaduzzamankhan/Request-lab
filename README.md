@@ -87,11 +87,31 @@ limitation is stated rather than hidden; see [docs/BUILD.md](docs/BUILD.md).
 
 Download the release archive from the GitHub Releases page:
 
-- `requestlab.exe` - the desktop application (no console window).
-- `requestlab-cli.exe` - the command line interface.
-- `SHA256SUMS.txt` - checksums for both binaries.
+- `requestlab.exe` - the desktop application (no console window). With arguments
+  it runs the CLI instead, so one file covers both.
+- `requestlab-cli.exe` - the standalone command line interface.
+- `requestlab-installer.exe` - the setup program (window, or `--silent`).
+- `requestlab-updater.exe` - the update program (window, `--check` or `--silent`).
+- `requestlab-update-helper.exe` - applies a staged update after the app closes.
+- `manifest.json` / `manifest.json.sig` - the signed description of the release.
+- `SHA256SUMS.txt` - checksums for the published files.
 
-Both binaries are self-contained; no runtime needs to be installed.
+Every binary is self-contained; no runtime needs to be installed. The application
+only installs releases whose manifest verifies against its trusted Ed25519 key.
+
+## Installer and updates
+
+`requestlab-installer` downloads the signed package, verifies its size and
+SHA-256, installs transactionally, creates shortcuts and registers an uninstall
+entry. `requestlab-updater` checks for a newer signed release and either applies
+it directly or stages it for `requestlab-update-helper`, which waits for the
+running application to exit and swaps files with automatic rollback.
+
+```text
+requestlab-installer --silent --install-dir "C:\Apps\RequestLab" --launch
+requestlab-updater --check          # exit 0: update available, 3: current
+requestlab-updater --silent --pid 1234 --launch
+```
 
 ## Build from source
 

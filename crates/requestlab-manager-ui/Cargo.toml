@@ -3,7 +3,9 @@ name = "requestlab-manager-ui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Shared GPUI widgets for the RequestLab installer and updater"
+description = "Shared installer and updater state model"
 
 [dependencies]
-gpui = { workspace = true }
+requestlab-manager = { workspace = true }
+
+[dev-dependencies]

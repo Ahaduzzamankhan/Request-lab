@@ -95,8 +95,24 @@ jobs:
         run: |
           cargo test -p requestlab-models -p requestlab-http -p requestlab-storage `
                      -p requestlab-collections -p requestlab-environments `
-                     -p requestlab-core -p requestlab-cli
+                     -p requestlab-core -p requestlab-cli -p requestlab-manager `
+                     -p requestlab-manager-ui -p requestlab-update-helper `
+                     -p requestlab-installer -p requestlab-updater
       - name: CLI smoke test
         run: |
           cargo run -q -p requestlab-cli -- --version
           cargo run -q -p requestlab-cli -- config get
+
+      - name: Management tool smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -q -p requestlab-installer -- --version
+          cargo run -q -p requestlab-installer -- --help
+          cargo run -q -p requestlab-updater -- --version
+          cargo run -q -p requestlab-updater -- --help
+          cargo run -q -p requestlab-update-helper -- --version
+          cargo run -q -p requestlab-update-helper -- --help
+          # A generated key must sign what it verifies on the release host too.
+          cargo run -q -p requestlab-update-helper -- generate-key --out keys
+          cargo run -q -p requestlab-update-helper -- public-key --key-file keys/signing-key.txt
