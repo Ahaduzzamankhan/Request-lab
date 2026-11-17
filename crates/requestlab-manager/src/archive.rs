@@ -110,7 +110,14 @@ pub fn extract_zip(
         let mut entry = archive.by_index(index).map_err(|error| {
             ManagerError::UnsafeArchive(format!("archive entry {index} cannot be read: {error}"))
         })?;
-        let name = entry.name().to_string();
+        let name = entry
+            .name()
+            .map_err(|error| {
+                ManagerError::UnsafeArchive(format!(
+                    "archive entry {index} has no usable name: {error}"
+                ))
+            })?
+            .to_string();
         let relative = safe_join(destination, &name).map_err(ManagerError::UnsafeArchive)?;
 
         if entry.is_symlink() {

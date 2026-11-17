@@ -9,6 +9,14 @@ use gpui::{point, px, AnyWindowHandle, Entity, Modifiers, TestAppContext, Visual
 use requestlab_core::AppService;
 use requestlab_ui::{AppView, ThemeMode};
 
+/// The application bridges to a real Tokio runtime for every database and
+/// network call, so results arrive from worker threads. GPUI's test scheduler
+/// calls that non-deterministic; allowing parking is the documented way to test
+/// a mix of deterministic UI work and real I/O.
+fn allow_background_work(cx: &TestAppContext) {
+    cx.dispatcher.allow_parking();
+}
+
 fn service() -> AppService {
     let runtime = tokio::runtime::Runtime::new().expect("tokio runtime");
     runtime
@@ -35,6 +43,7 @@ fn click(cx: &mut VisualTestContext, selector: &'static str) {
 #[gpui::test]
 fn the_workspace_renders_and_survives_input(cx: &mut TestAppContext) {
     cx.update(ely_gpui_component::init_for_tests);
+    allow_background_work(cx);
     let (service, runtime) = workspace();
     let handle: AnyWindowHandle = cx
         .add_window(|_window, cx| AppView::new(service, runtime, ThemeMode::Dark, cx))
@@ -70,6 +79,7 @@ fn the_workspace_renders_and_survives_input(cx: &mut TestAppContext) {
 #[gpui::test]
 fn the_toolbar_controls_work(cx: &mut TestAppContext) {
     cx.update(ely_gpui_component::init_for_tests);
+    allow_background_work(cx);
     let (service, runtime) = workspace();
     let handle = cx.add_window(|_window, cx| AppView::new(service, runtime, ThemeMode::Dark, cx));
     let mut cx = VisualTestContext::from_window(handle.into(), cx);
@@ -113,6 +123,7 @@ fn the_toolbar_controls_work(cx: &mut TestAppContext) {
 #[gpui::test]
 fn every_control_in_a_group_is_clickable(cx: &mut TestAppContext) {
     cx.update(ely_gpui_component::init_for_tests);
+    allow_background_work(cx);
     let (service, runtime) = workspace();
     let handle = cx.add_window(|_window, cx| AppView::new(service, runtime, ThemeMode::Dark, cx));
     let mut cx = VisualTestContext::from_window(handle.into(), cx);
@@ -187,6 +198,7 @@ fn click_across(cx: &mut VisualTestContext, selector: &'static str, fraction: f3
 #[gpui::test]
 fn every_tab_and_segment_switches(cx: &mut TestAppContext) {
     cx.update(ely_gpui_component::init_for_tests);
+    allow_background_work(cx);
     let (service, runtime) = workspace();
     let handle = cx.add_window(|_window, cx| AppView::new(service, runtime, ThemeMode::Dark, cx));
     let mut cx = VisualTestContext::from_window(handle.into(), cx);

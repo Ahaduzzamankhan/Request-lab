@@ -1,0 +1,29 @@
+# Advisories that cannot be fixed inside this workspace yet, with the reason.
+# Everything not listed here still fails `cargo audit --deny warnings`, so a new
+# advisory or a newly unmaintained crate is not silently accepted.
+
+[advisories]
+ignore = [
+    # libsqlite3-sys 0.30.1 bundles a SQLite with CVE-2026-119375. The patched
+    # library is only available in libsqlite3-sys >= 0.39, and sqlx (the crate we
+    # use to talk to SQLite) still constrains it to < 0.38 as of sqlx 0.9.0.
+    # Remove this entry once a sqlx release allows the patched SQLite.
+    "RUSTSEC-2026-0459",
+    # rsa 0.9.10 (Marvin attack) is in Cargo.lock only because sqlx-macros-core
+    # lists sqlx-mysql as an optional dependency. This workspace builds SQLite
+    # only, never enables the mysql feature, so the crate is not compiled into
+    # any binary. sqlx 0.9 drops it, but 0.9 also rejects dynamically built SQL
+    # strings, so the upgrade is a separate change.
+    "RUSTSEC-2023-0071",
+    # The crates below are unmaintained, not vulnerable, and are pulled in by the
+    # pinned UI stack: rustybuzz/ttf-parser ship inside GPUI's text shaping, and
+    # paste, zbus_names, zvariant and zvariant_derive are reached through GPUI's
+    # Linux desktop integration. They cannot be replaced without moving off the
+    # pinned GPUI version, which the project pins deliberately.
+    "RUSTSEC-2026-0206", # rustybuzz
+    "RUSTSEC-2026-0192", # ttf-parser
+    "RUSTSEC-2024-0436", # paste
+    "RUSTSEC-2026-0371", # zbus_names
+    "RUSTSEC-2026-0370", # zvariant
+    "RUSTSEC-2026-0372", # zvariant_derive
+]

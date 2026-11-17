@@ -19,4 +19,7 @@ jobs:
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
       - name: Audit dependencies
+        # `.cargo/audit.toml` holds advisory ids that cannot be fixed while the
+        # UI and database stacks stay pinned, each with the reason and what would
+        # allow the entry to be removed. Anything outside that list still fails.
         run: cargo audit --deny warnings

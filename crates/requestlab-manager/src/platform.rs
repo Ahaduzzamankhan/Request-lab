@@ -230,7 +230,7 @@ mod imp {
             ("Publisher", "RequestLab".to_string()),
             ("InstallLocation", install_dir.display().to_string()),
             ("DisplayIcon", format!("{},0", app.display())),
-            ("UninstallString", uninstall_string),
+            ("UninstallString", uninstall_string.clone()),
             (
                 "QuietUninstallString",
                 format!("{uninstall_string} --quiet"),

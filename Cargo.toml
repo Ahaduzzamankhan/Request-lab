@@ -42,7 +42,7 @@ reqwest = { version = "0.12.15", default-features = false, features = ["rustls-t
 sha2 = "0.10.9"
 base64 = "0.22.1"
 ed25519-dalek = { version = "2.1.1", default-features = false, features = ["std"] }
-zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+zip = { version = "9.6.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 tempfile = "3.20.0"
 
 # Windows-only: console reattachment and registry access
