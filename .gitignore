@@ -14,3 +14,4 @@ dist/
 *.log
 /keys/
 signing-key.txt
+installer/Output/

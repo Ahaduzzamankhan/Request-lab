@@ -258,3 +258,16 @@ Not verified / remaining:
   configured, so the release workflow still needs that secret before it can run.
 - The application has no in-app "check for updates" entry yet; it ships the
   updater executable, which the user (or an installer shortcut) starts.
+
+## Packaging: one executable, Inno Setup
+
+- The updater is now a library (`requestlab-updater`, no binary) and is reached
+  through `RequestLab.exe update`; `requestlab-installer` and the standalone
+  `requestlab-updater.exe` are gone from the workspace and from release packaging.
+- Windows installs come from `installer/requestlab.iss` (Inno Setup 6), compiled in
+  CI into `RequestLab-Setup-<version>-x64.exe`. The installer never touches
+  `%APPDATA%\RequestLab`, so collections, environments, history and settings
+  survive install, upgrade and uninstall.
+- `release-windows.yml` builds `requestlab.exe`, `requestlab-cli.exe` and the
+  update helper, compiles the installer with ISCC, and publishes the installer,
+  the CLI, the signed manifest and `SHA256SUMS.txt`.

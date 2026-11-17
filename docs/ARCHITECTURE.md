@@ -34,9 +34,8 @@ Management front ends have their own chain and never touch the application's
 data path:
 
 ```
-requestlab-installer   requestlab-updater
-        │                     │
-        └──────────┬──────────┘
+        requestlab-app  (GUI + CLI dispatch + `update` subcommand)
+                   │
                    ▼
           requestlab-manager-ui
                    │
@@ -75,12 +74,11 @@ Rules enforced by the layout:
 | `requestlab-environments` | Environment CRUD, active environment, `{{VAR}}` resolution, validation |
 | `requestlab-core` | `AppService`: the only orchestration point |
 | `requestlab-ui` | Theme, components, text editor element, panels, dialogs, view state |
-| `requestlab-app` | Process bootstrap, window creation, logging, shutdown |
+| `requestlab-app` | Process bootstrap, window creation, logging, shutdown; dispatches the CLI and runs the embedded updater via `requestlab.exe update` |
 | `requestlab-cli` | Argument parsing, command execution, text/JSON rendering, exit codes |
 | `requestlab-manager` | Install/update engine: manifest parsing, Ed25519 verification, GitHub releases, verified downloads, transactional install, rollback, update staging, platform integration (shortcuts, registry, process waits) |
 | `requestlab-manager-ui` | Installer/updater state model: stages, bounded log, progress, warnings, terminal result (no GPUI dependency, unit tested) |
-| `requestlab-installer` | Setup window and `--silent` mode; discovers, verifies and installs a release |
-| `requestlab-updater` | Update window, `--check` and `--silent`; stages verified updates and hands them to the helper |
+| `requestlab-updater` | Library (no binary): update window, `--check` and `--silent`; staged and verified updates, handed to the helper |
 | `requestlab-update-helper` | Applies a staged update after the app exits, writes a recovery log, and carries the release tooling (`build-manifest`, `sign-manifest`, `public-key`, `generate-key`) |
 
 ## Application state

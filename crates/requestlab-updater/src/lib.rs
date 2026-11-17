@@ -1,6 +1,8 @@
-//! RequestLab updater.
-
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//! RequestLab updater, embedded in `RequestLab.exe`.
+//!
+//! The desktop application owns the update flow: `RequestLab.exe update` and the
+//! `update` window both end up here, so a release never has to ship a second
+//! updater executable.
 
 mod cli;
 mod flow;
@@ -16,8 +18,8 @@ use tokio::runtime::Runtime;
 /// Exit code used by `--check` when the installation is already current.
 const NO_UPDATE: u8 = 3;
 
-fn main() -> ExitCode {
-    let arguments: Vec<String> = std::env::args().skip(1).collect();
+/// Run the updater with the arguments that follow `RequestLab.exe update`.
+pub fn run(arguments: Vec<String>) -> ExitCode {
     let mode = match cli::parse(arguments) {
         Ok(mode) => mode,
         Err(message) => {
@@ -32,7 +34,10 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Mode::Version => {
-            println!("requestlab-updater {}", requestlab_manager::VERSION);
+            println!(
+                "RequestLab {} updater (requestlab update)",
+                requestlab_manager::VERSION
+            );
             ExitCode::SUCCESS
         }
         Mode::Check(options) => check(options),

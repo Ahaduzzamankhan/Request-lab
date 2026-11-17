@@ -114,17 +114,25 @@ shipping a new key in a new build; leaking it means anyone can sign an update.
    `REQUESTLAB_SIGNING_KEY` is not configured.
 3. Runs formatting, workspace clippy with `-D warnings`, and the test suite.
 4. Builds the update helper first, derives the public key, then builds
-   `requestlab.exe`, `requestlab-cli.exe`, `requestlab-installer.exe`,
-   `requestlab-updater.exe` and `requestlab-update-helper.exe` with that key
-   compiled in.
-5. Verifies every executable answers `--version`.
-6. Packages `requestlab-windows-x86_64.zip` (all five executables plus README,
-   LICENSE and version.json) and writes `SHA256SUMS.txt`.
-7. Builds `manifest.json` for the zip, signs it to `manifest.json.sig`, and adds
+   `requestlab.exe` (GUI, CLI dispatch and updater), `requestlab-cli.exe` and
+   `requestlab-update-helper.exe` with that key compiled in.
+5. Verifies every executable answers `--version`, including
+   `requestlab.exe update --version`.
+6. Packages `requestlab-windows-x86_64.zip` (`requestlab.exe`,
+   `requestlab-cli.exe`, README, LICENSE, version.json) and writes
+   `SHA256SUMS.txt`.
+7. Installs Inno Setup with Chocolatey and compiles
+   `installer/requestlab.iss` into `RequestLab-Setup-<version>-x64.exe`, then
+   adds its checksum.
+8. Builds `manifest.json` for the zip, signs it to `manifest.json.sig`, and adds
    both checksums.
-8. Uploads a build artifact, creates the tag (on manual dispatch) and publishes
-   the GitHub Release with the binaries, the zip, the manifest, its signature and
-   the checksums.
+9. Uploads a build artifact, creates the tag (on manual dispatch) and publishes
+   the GitHub Release with the installer, the standalone CLI, the zip, the
+   manifest, its signature and the checksums.
+
+The release no longer publishes `requestlab-installer.exe` or
+`requestlab-updater.exe`: Inno Setup is the only installer, and the updater is
+part of `requestlab.exe`.
 
 Required permissions are `contents: write`; no personal token is used - the
 workflow relies on `GITHUB_TOKEN`.

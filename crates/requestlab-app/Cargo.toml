@@ -17,6 +17,7 @@ ely-gpui-component = { workspace = true }
 requestlab-ui = { workspace = true }
 requestlab-core = { workspace = true }
 requestlab-cli = { workspace = true }
+requestlab-updater = { workspace = true }
 requestlab-models = { workspace = true }
 requestlab-storage = { workspace = true }
 tokio = { workspace = true }

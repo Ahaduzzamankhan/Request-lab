@@ -5709,6 +5709,7 @@ dependencies = [
  "requestlab-models",
  "requestlab-storage",
  "requestlab-ui",
+ "requestlab-updater",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5781,23 +5782,6 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "requestlab-installer"
-version = "0.1.2"
-dependencies = [
- "anyhow",
- "ely-gpui-component",
- "gpui-pre",
- "gpui-pre-platform",
- "requestlab-manager",
- "requestlab-manager-ui",
- "requestlab-ui",
- "tempfile",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

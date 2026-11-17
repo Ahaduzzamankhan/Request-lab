@@ -28,9 +28,9 @@ pub const USAGE: &str = "\
 RequestLab updater
 
 USAGE:
-    requestlab-updater                          Open the updater window
-    requestlab-updater --check [options]        Report whether an update exists
-    requestlab-updater --silent [options]       Download and install it
+    requestlab update                           Open the updater window
+    requestlab update --check [options]         Report whether an update exists
+    requestlab update --silent [options]        Download and install it
 
 OPTIONS:
     --check              Only check; exit code 0 means an update is available.

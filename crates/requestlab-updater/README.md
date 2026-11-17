@@ -1,6 +1,7 @@
 # requestlab-updater
 
-The RequestLab update program.
+The RequestLab update flow. It is a library, not a program: the code is linked
+into `RequestLab.exe`, so a release ships no separate updater executable.
 
 ## What it does
 
@@ -12,11 +13,13 @@ The RequestLab update program.
 
 ## Usage
 
+Reached through the desktop executable:
+
 ```text
-requestlab-updater                       # window, checks on open
-requestlab-updater --check               # exit 0 = update available, 3 = current
-requestlab-updater --silent --pid 1234 --launch
-requestlab-updater --help
+requestlab.exe update                    # window, checks on open
+requestlab.exe update --check            # exit 0 = update available, 3 = current
+requestlab.exe update --silent --pid 1234 --launch
+requestlab.exe update --help
 ```
 
 ## Tests

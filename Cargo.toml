@@ -12,7 +12,6 @@ members = [
     "crates/requestlab-cli",
     "crates/requestlab-manager",
     "crates/requestlab-manager-ui",
-    "crates/requestlab-installer",
     "crates/requestlab-updater",
     "crates/requestlab-update-helper",
 ]
@@ -68,6 +67,7 @@ requestlab-ui = { path = "crates/requestlab-ui" }
 requestlab-cli = { path = "crates/requestlab-cli", version = "0.1.2" }
 requestlab-manager-ui = { path = "crates/requestlab-manager-ui" }
 requestlab-manager = { path = "crates/requestlab-manager" }
+requestlab-updater = { path = "crates/requestlab-updater" }
 
 
 [profile.release]

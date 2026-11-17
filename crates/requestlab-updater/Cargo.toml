@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "RequestLab desktop updater"
 
-[[bin]]
-name = "requestlab-updater"
-path = "src/main.rs"
+[lib]
+name = "requestlab_updater"
+path = "src/lib.rs"
 
 [dependencies]
 gpui = { workspace = true }

@@ -11,6 +11,12 @@ fn main() -> std::process::ExitCode {
     // A single executable: with arguments it behaves exactly like the CLI, with
     // none it opens the desktop window.
     let arguments: Vec<String> = std::env::args().skip(1).collect();
+    // The updater ships inside this executable: `RequestLab.exe update [args]`.
+    if arguments.first().map(String::as_str) == Some("update") {
+        #[cfg(windows)]
+        console::attach_to_parent();
+        return requestlab_updater::run(arguments.into_iter().skip(1).collect());
+    }
     if !arguments.is_empty() {
         #[cfg(windows)]
         console::attach_to_parent();

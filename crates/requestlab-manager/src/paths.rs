@@ -37,10 +37,6 @@ pub fn helper_binary() -> String {
     format!("requestlab-update-helper{}", exe_suffix())
 }
 
-pub fn updater_binary() -> String {
-    format!("requestlab-updater{}", exe_suffix())
-}
-
 /// `%APPDATA%\RequestLab` on Windows, the XDG data directory elsewhere.
 pub fn user_data_dir() -> PathBuf {
     #[cfg(windows)]

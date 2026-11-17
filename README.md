@@ -85,13 +85,23 @@ limitation is stated rather than hidden; see [docs/BUILD.md](docs/BUILD.md).
 
 ## Installation
 
-Download the release archive from the GitHub Releases page:
+Download `RequestLab-Setup-<version>-x64.exe` from the GitHub Releases page and
+run it. The Inno Setup installer places the application and the CLI, creates the
+Start Menu entries, offers a desktop shortcut and registers an uninstall entry.
+It defaults to a per-user install and can install machine-wide from its
+privileges dialog. Silent install and uninstall are supported:
+
+```text
+RequestLab-Setup-0.1.2-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+"%LOCALAPPDATA%\Programs\RequestLab\unins000.exe" /VERYSILENT
+```
+
+The release also publishes the individual files:
 
 - `requestlab.exe` - the desktop application (no console window). With arguments
-  it runs the CLI instead, so one file covers both.
+  it runs the CLI, and `requestlab.exe update` runs the updater, so one file
+  covers the GUI, the CLI and the update flow.
 - `requestlab-cli.exe` - the standalone command line interface.
-- `requestlab-installer.exe` - the setup program (window, or `--silent`).
-- `requestlab-updater.exe` - the update program (window, `--check` or `--silent`).
 - `requestlab-update-helper.exe` - applies a staged update after the app closes.
 - `manifest.json` / `manifest.json.sig` - the signed description of the release.
 - `SHA256SUMS.txt` - checksums for the published files.
@@ -101,17 +111,24 @@ only installs releases whose manifest verifies against its trusted Ed25519 key.
 
 ## Installer and updates
 
-`requestlab-installer` downloads the signed package, verifies its size and
-SHA-256, installs transactionally, creates shortcuts and registers an uninstall
-entry. `requestlab-updater` checks for a newer signed release and either applies
-it directly or stages it for `requestlab-update-helper`, which waits for the
-running application to exit and swaps files with automatic rollback.
+Windows installs come from the Inno Setup script in [installer/](installer).
+There is no second installer program: `requestlab-installer.exe` no longer
+exists, and releases do not publish an updater binary either.
+
+The updater lives inside `RequestLab.exe`:
 
 ```text
-requestlab-installer --silent --install-dir "C:\Apps\RequestLab" --launch
-requestlab-updater --check          # exit 0: update available, 3: current
-requestlab-updater --silent --pid 1234 --launch
+requestlab.exe update                # updater window
+requestlab.exe update --check        # exit 0: update available, 3: current
+requestlab.exe update --silent --pid 1234 --launch
 ```
+
+An update downloads the signed package, verifies its size and SHA-256, and either
+replaces the files in place (application closed) or stages them for
+`requestlab-update-helper.exe`, which waits for the running application to exit
+and swaps files with automatic rollback. Installing, upgrading and uninstalling
+never touch `%APPDATA%\RequestLab`, so collections, environments, history and
+settings survive all three.
 
 ## Build from source
 

@@ -97,7 +97,7 @@ jobs:
                      -p requestlab-collections -p requestlab-environments `
                      -p requestlab-core -p requestlab-cli -p requestlab-manager `
                      -p requestlab-manager-ui -p requestlab-update-helper `
-                     -p requestlab-installer -p requestlab-updater
+                     -p requestlab-updater
       - name: CLI smoke test
         run: |
           cargo run -q -p requestlab-cli -- --version
@@ -107,10 +107,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo run -q -p requestlab-installer -- --version
-          cargo run -q -p requestlab-installer -- --help
-          cargo run -q -p requestlab-updater -- --version
-          cargo run -q -p requestlab-updater -- --help
+          # The updater now lives inside the desktop executable.
+          cargo run -q -p requestlab-app -- update --version
+          cargo run -q -p requestlab-app -- update --help
           cargo run -q -p requestlab-update-helper -- --version
           cargo run -q -p requestlab-update-helper -- --help
           # A generated key must sign what it verifies on the release host too.

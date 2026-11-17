@@ -83,8 +83,7 @@ jobs:
           cargo test -p requestlab-models -p requestlab-http -p requestlab-storage \
                      -p requestlab-collections -p requestlab-environments \
                      -p requestlab-core -p requestlab-cli -p requestlab-manager \
-                     -p requestlab-manager-ui -p requestlab-update-helper \
-                     -p requestlab-installer -p requestlab-updater
+                     -p requestlab-manager-ui -p requestlab-update-helper
           cargo build --workspace --all-targets
 
       # The update helper is built first so the application can embed the public
@@ -106,8 +105,10 @@ jobs:
           echo "REQUESTLAB_MANIFEST_PUBLIC_KEY=$public_key" >> "$GITHUB_ENV"
 
       - name: Build the signed application
+        # One desktop executable carries the GUI, the CLI dispatch and the
+        # updater; requestlab-cli.exe is the standalone command line tool.
         run: |
-          cargo build --release -p requestlab-app -p requestlab-cli -p requestlab-installer -p requestlab-updater
+          cargo build --release -p requestlab-app -p requestlab-cli -p requestlab-update-helper
 
       - name: Verify every executable starts
         shell: bash
@@ -115,9 +116,8 @@ jobs:
           set -euo pipefail
           ./target/release/requestlab.exe --version
           ./target/release/requestlab.exe --help | head -n 3
+          ./target/release/requestlab.exe update --version
           ./target/release/requestlab-cli.exe --version
-          ./target/release/requestlab-installer.exe --version
-          ./target/release/requestlab-updater.exe --version
           ./target/release/requestlab-update-helper.exe --version
 
       - name: Package artifacts
@@ -127,28 +127,45 @@ jobs:
           mkdir -p dist
           cp target/release/requestlab.exe dist/
           cp target/release/requestlab-cli.exe dist/
-          cp target/release/requestlab-installer.exe dist/
-          cp target/release/requestlab-updater.exe dist/
           cp target/release/requestlab-update-helper.exe dist/
           cp README.md LICENSE version.json dist/
           cd dist
-          sha256sum requestlab.exe requestlab-cli.exe requestlab-installer.exe \
-                    requestlab-updater.exe requestlab-update-helper.exe > SHA256SUMS.txt
+          sha256sum requestlab.exe requestlab-cli.exe requestlab-update-helper.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - name: Package the single-file download
+      - name: Package the updater download
         shell: pwsh
         run: |
           # The manifest names this file, so the name is fixed. It carries the
-          # desktop application (which is also the CLI), the installer, the
-          # updater and the helper.
+          # desktop application (GUI, CLI dispatch and updater) and the CLI, which
+          # is everything the updater copies into an installation.
           $name = "requestlab-windows-x86_64.zip"
           Compress-Archive -Path dist/requestlab.exe, dist/requestlab-cli.exe, `
-              dist/requestlab-installer.exe, dist/requestlab-updater.exe, `
-              dist/requestlab-update-helper.exe, README.md, LICENSE, version.json `
-              -DestinationPath "dist/$name"
+              README.md, LICENSE, version.json -DestinationPath "dist/$name"
           $hash = (Get-FileHash "dist/$name" -Algorithm SHA256).Hash.ToLower()
           Add-Content -Path dist/SHA256SUMS.txt -Value "$hash  $name"
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found at $iscc" }
+          Add-Content -Path $env:GITHUB_ENV -Value "ISCC=$iscc"
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          & $env:ISCC "/DAppVersion=$version" "/DSourceDir=${{ github.workspace }}\dist" `
+            "installer/requestlab.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          $setup = "installer/Output/RequestLab-Setup-$version-x64.exe"
+          if (-not (Test-Path $setup)) { throw "installer was not produced at $setup" }
+          Copy-Item $setup "dist/"
+          $hash = (Get-FileHash "dist/RequestLab-Setup-$version-x64.exe" -Algorithm SHA256).Hash.ToLower()
+          Add-Content -Path dist/SHA256SUMS.txt -Value "$hash  RequestLab-Setup-$version-x64.exe"
           Get-Content dist/SHA256SUMS.txt
 
       - name: Build and sign the release manifest
@@ -196,10 +213,8 @@ jobs:
           prerelease: ${{ steps.version.outputs.channel != 'stable' }}
           generate_release_notes: true
           files: |
-            dist/requestlab.exe
+            dist/RequestLab-Setup-${{ steps.version.outputs.version }}-x64.exe
             dist/requestlab-cli.exe
-            dist/requestlab-installer.exe
-            dist/requestlab-updater.exe
             dist/requestlab-update-helper.exe
             dist/requestlab-windows-x86_64.zip
             dist/manifest.json
