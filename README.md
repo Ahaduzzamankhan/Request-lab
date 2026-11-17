@@ -1,4 +1,5 @@
 # RequestLab
+[![OctoCounts](https://api.octocounts.com/badge/Ahaduzzamankhan/Request-lab/branch/main)](https://octocounts.com/github/Ahaduzzamankhan/Request-lab/tree/main?analysis=%7B%22ignoredDirs%22%3A%5B%5D%2C%22ignoredLanguages%22%3A%5B%5D%2C%22profile%22%3A%22default%22%2C%22includeDocs%22%3Afalse%2C%22includeTests%22%3Afalse%2C%22includeGenerated%22%3Afalse%7D)
 
 RequestLab is a native API development studio for Windows written in Rust with
 [GPUI](https://gpui.rs), Zed's GPU-accelerated UI framework, taken from the
