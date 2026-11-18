@@ -8,7 +8,8 @@ use requestlab_models::{ApiKeyLocation, HttpMethod, RequestBodyKind};
 /// Top-level command selected on the command line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    Send(SendOptions),
+    /// Boxed because the send options are far larger than every other variant.
+    Send(Box<SendOptions>),
     /// Parse a cURL command and print the request without sending it.
     Curl {
         command: String,
@@ -91,6 +92,26 @@ pub enum CliAuth {
         value: String,
         location: ApiKeyLocation,
     },
+    Digest {
+        username: String,
+        password: String,
+    },
+    AwsSigV4 {
+        access_key: String,
+        secret_key: String,
+        region: String,
+        service: String,
+        session_token: String,
+    },
+    OAuth2 {
+        grant: requestlab_models::OAuth2Grant,
+        token_url: String,
+        client_id: String,
+        client_secret: String,
+        scope: String,
+        username: String,
+        password: String,
+    },
 }
 
 /// Options gathered for a `send` invocation.
@@ -104,12 +125,53 @@ pub struct SendOptions {
     pub body: Option<String>,
     pub body_kind: RequestBodyKind,
     pub auth: Option<CliAuth>,
+    /// Flags gathered for `--oauth2`; combined into [`CliAuth::OAuth2`] after
+    /// the whole command line has been read, so flag order does not matter.
+    pub oauth2: OAuth2Options,
     pub environment: Option<String>,
     pub timeout_seconds: Option<u64>,
     pub print_body: bool,
     pub fail_on_error_status: bool,
     /// A cURL command to import instead of the individual options.
     pub curl: Option<String>,
+}
+
+/// Fields collected from the `--oauth2*` flags.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OAuth2Options {
+    pub token_url: Option<String>,
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
+    pub scope: Option<String>,
+    pub password_grant: bool,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}
+
+impl OAuth2Options {
+    /// Turn the flags into auth, refusing incomplete configurations.
+    fn into_auth(self) -> Result<Option<CliAuth>, String> {
+        let Some(token_url) = self.token_url else {
+            return Ok(None);
+        };
+        let client_id = self.client_id.ok_or("--oauth2 needs --client-id <ID>")?;
+        if self.password_grant && self.username.is_none() {
+            return Err("--oauth2-grant password needs --oauth2-user <USER>".to_string());
+        }
+        Ok(Some(CliAuth::OAuth2 {
+            grant: if self.password_grant {
+                requestlab_models::OAuth2Grant::Password
+            } else {
+                requestlab_models::OAuth2Grant::ClientCredentials
+            },
+            token_url,
+            client_id,
+            client_secret: self.client_secret.unwrap_or_default(),
+            scope: self.scope.unwrap_or_default(),
+            username: self.username.unwrap_or_default(),
+            password: self.password.unwrap_or_default(),
+        }))
+    }
 }
 
 impl Default for SendOptions {
@@ -123,6 +185,7 @@ impl Default for SendOptions {
             body: None,
             body_kind: RequestBodyKind::None,
             auth: None,
+            oauth2: OAuth2Options::default(),
             environment: None,
             timeout_seconds: None,
             print_body: true,
@@ -228,6 +291,16 @@ SEND OPTIONS:
         --bearer <TOKEN>          Bearer token authentication
         --basic <USER:PASSWORD>   Basic authentication
         --api-key <KEY=VALUE>     API key; add @query to send it as a query parameter
+        --digest <USER:PASSWORD>  HTTP Digest authentication (challenge/response)
+        --aws-sigv4 <A:S:R:SVC>   Access key, secret, region and service for SigV4
+        --aws-session-token <T>   Session token for temporary AWS credentials
+        --oauth2 <TOKEN_URL>      Fetch a token (needs --client-id)
+        --client-id <ID>          OAuth 2.0 client id
+        --client-secret <SECRET>  OAuth 2.0 client secret
+        --scope <SCOPE>           OAuth 2.0 scope
+        --oauth2-grant <GRANT>    client_credentials (default) or password
+        --oauth2-user <USER>      Username for the password grant
+        --oauth2-password <PW>    Password for the password grant
     -e, --env <NAME>              Environment to resolve {{VARIABLES}} with
     -t, --timeout <SECONDS>       Override the stored timeout
         --no-body                 Do not print the response body
@@ -504,6 +577,60 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
                     password: password.to_string(),
                 });
             }
+            "--digest" => {
+                let raw = take("--digest")?;
+                let (username, password) = raw
+                    .split_once(':')
+                    .ok_or("--digest expects USER:PASSWORD")?;
+                options.auth = Some(CliAuth::Digest {
+                    username: username.to_string(),
+                    password: password.to_string(),
+                });
+            }
+            "--aws-sigv4" => {
+                let raw = take("--aws-sigv4")?;
+                let parts: Vec<&str> = raw.split(':').collect();
+                if parts.len() != 4 {
+                    return Err(
+                        "--aws-sigv4 expects ACCESS_KEY:SECRET_KEY:REGION:SERVICE".to_string()
+                    );
+                }
+                options.auth = Some(CliAuth::AwsSigV4 {
+                    access_key: parts[0].to_string(),
+                    secret_key: parts[1].to_string(),
+                    region: parts[2].to_string(),
+                    service: parts[3].to_string(),
+                    session_token: String::new(),
+                });
+            }
+            "--aws-session-token" => {
+                let token = take("--aws-session-token")?;
+                match &mut options.auth {
+                    Some(CliAuth::AwsSigV4 { session_token, .. }) => *session_token = token,
+                    _ => return Err(
+                        "--aws-session-token must follow --aws-sigv4 ACCESS:SECRET:REGION:SERVICE"
+                            .to_string(),
+                    ),
+                }
+            }
+            "--oauth2" => options.oauth2.token_url = Some(take("--oauth2")?),
+            "--client-id" => options.oauth2.client_id = Some(take("--client-id")?),
+            "--client-secret" => options.oauth2.client_secret = Some(take("--client-secret")?),
+            "--scope" => options.oauth2.scope = Some(take("--scope")?),
+            "--oauth2-grant" => {
+                let value = take("--oauth2-grant")?;
+                options.oauth2.password_grant = match value.as_str() {
+                    "client_credentials" | "client-credentials" => false,
+                    "password" => true,
+                    other => {
+                        return Err(format!(
+                            "'{other}' is not an OAuth 2.0 grant (client_credentials, password)"
+                        ))
+                    }
+                };
+            }
+            "--oauth2-user" => options.oauth2.username = Some(take("--oauth2-user")?),
+            "--oauth2-password" => options.oauth2.password = Some(take("--oauth2-password")?),
             "--api-key" => {
                 let raw = take("--api-key")?;
                 let (raw, location) = match raw.strip_suffix("@query") {
@@ -556,6 +683,13 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
         return Err("--curl already carries the request; drop the other send options".to_string());
     }
 
+    if options.auth.is_some() && options.oauth2.token_url.is_some() {
+        return Err("choose one authentication method".to_string());
+    }
+    if let Some(auth) = options.oauth2.clone().into_auth()? {
+        options.auth = Some(auth);
+    }
+
     if options.body.is_some() && options.body_kind == RequestBodyKind::FormUrlEncoded {
         return Err("use --form for URL-encoded bodies instead of --data".to_string());
     }
@@ -566,7 +700,7 @@ fn parse_send(args: &[String]) -> Result<Command, String> {
         return Err("--body-type form needs at least one --form NAME=VALUE".to_string());
     }
 
-    Ok(Command::Send(options))
+    Ok(Command::Send(Box::new(options)))
 }
 
 #[cfg(test)]
@@ -785,6 +919,143 @@ mod tests {
         let invocation = parse(["--data-dir", "/tmp/rl", "collections", "list"]).unwrap();
         assert_eq!(invocation.globals.data_dir.as_deref(), Some("/tmp/rl"));
         assert!(parse(["--data-dir"]).is_err());
+    }
+
+    #[test]
+    fn digest_and_sigv4_flags_parse() {
+        let Command::Send(options) =
+            parse(["send", "https://example.com", "--digest", "ada:secret"])
+                .unwrap()
+                .command
+        else {
+            panic!("expected send");
+        };
+        assert_eq!(
+            options.auth,
+            Some(CliAuth::Digest {
+                username: "ada".into(),
+                password: "secret".into()
+            })
+        );
+        assert!(parse(["send", "https://example.com", "--digest", "ada"]).is_err());
+
+        let Command::Send(options) = parse([
+            "send",
+            "https://example.com",
+            "--aws-sigv4",
+            "AKID:secret:us-east-1:s3",
+            "--aws-session-token",
+            "session",
+        ])
+        .unwrap()
+        .command
+        else {
+            panic!("expected send");
+        };
+        assert_eq!(
+            options.auth,
+            Some(CliAuth::AwsSigV4 {
+                access_key: "AKID".into(),
+                secret_key: "secret".into(),
+                region: "us-east-1".into(),
+                service: "s3".into(),
+                session_token: "session".into(),
+            })
+        );
+        assert!(parse([
+            "send",
+            "https://example.com",
+            "--aws-sigv4",
+            "AKID:secret:us-east-1"
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn oauth2_flags_combine_in_any_order() {
+        let Command::Send(options) = parse([
+            "send",
+            "https://example.com",
+            "--scope",
+            "read",
+            "--client-id",
+            "cli",
+            "--oauth2",
+            "https://auth.example.com/token",
+            "--client-secret",
+            "shh",
+        ])
+        .unwrap()
+        .command
+        else {
+            panic!("expected send");
+        };
+        assert_eq!(
+            options.auth,
+            Some(CliAuth::OAuth2 {
+                grant: requestlab_models::OAuth2Grant::ClientCredentials,
+                token_url: "https://auth.example.com/token".into(),
+                client_id: "cli".into(),
+                client_secret: "shh".into(),
+                scope: "read".into(),
+                username: String::new(),
+                password: String::new(),
+            })
+        );
+
+        let Command::Send(options) = parse([
+            "send",
+            "https://example.com",
+            "--oauth2",
+            "https://auth.example.com/token",
+            "--client-id",
+            "cli",
+            "--oauth2-grant",
+            "password",
+            "--oauth2-user",
+            "ada",
+            "--oauth2-password",
+            "pw",
+        ])
+        .unwrap()
+        .command
+        else {
+            panic!("expected send");
+        };
+        match options.auth {
+            Some(CliAuth::OAuth2 {
+                grant, username, ..
+            }) => {
+                assert_eq!(grant, requestlab_models::OAuth2Grant::Password);
+                assert_eq!(username, "ada");
+            }
+            other => panic!("unexpected auth: {other:?}"),
+        }
+
+        // Incomplete or conflicting configurations are refused.
+        assert!(parse(["send", "https://example.com", "--oauth2", "https://a/token"]).is_err());
+        assert!(parse([
+            "send",
+            "https://example.com",
+            "--oauth2",
+            "https://a/token",
+            "--client-id",
+            "cli",
+            "--oauth2-grant",
+            "password"
+        ])
+        .is_err());
+        assert!(parse([
+            "send",
+            "https://example.com",
+            "--bearer",
+            "t",
+            "--oauth2",
+            "https://a/token",
+            "--client-id",
+            "cli"
+        ])
+        .is_err());
     }
 
     #[test]

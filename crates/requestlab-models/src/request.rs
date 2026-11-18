@@ -308,6 +308,34 @@ pub enum ApiKeyLocation {
     Query,
 }
 
+/// Which OAuth 2.0 grant a request uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OAuth2Grant {
+    #[default]
+    ClientCredentials,
+    Password,
+}
+
+impl OAuth2Grant {
+    pub const ALL: [OAuth2Grant; 2] = [OAuth2Grant::ClientCredentials, OAuth2Grant::Password];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            OAuth2Grant::ClientCredentials => "Client credentials",
+            OAuth2Grant::Password => "Password",
+        }
+    }
+
+    /// The `grant_type` value sent to the token endpoint.
+    pub fn grant_type(self) -> &'static str {
+        match self {
+            OAuth2Grant::ClientCredentials => "client_credentials",
+            OAuth2Grant::Password => "password",
+        }
+    }
+}
+
 /// Request authentication. Credentials live here, never in the header list.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -326,6 +354,34 @@ pub enum Authentication {
         value: String,
         location: ApiKeyLocation,
     },
+    /// HTTP Digest (RFC 7616). The challenge is read from the 401 response at
+    /// send time, so no nonce is stored here.
+    Digest {
+        username: String,
+        password: String,
+    },
+    /// AWS Signature Version 4. Session tokens are for temporary credentials.
+    AwsSigV4 {
+        access_key: String,
+        secret_key: String,
+        region: String,
+        service: String,
+        #[serde(default)]
+        session_token: String,
+    },
+    /// OAuth 2.0. The token is fetched and cached by the engine, never saved.
+    OAuth2 {
+        grant: OAuth2Grant,
+        token_url: String,
+        client_id: String,
+        client_secret: String,
+        #[serde(default)]
+        scope: String,
+        #[serde(default)]
+        username: String,
+        #[serde(default)]
+        password: String,
+    },
 }
 
 impl Authentication {
@@ -335,7 +391,20 @@ impl Authentication {
             Authentication::Basic { .. } => "Basic",
             Authentication::Bearer { .. } => "Bearer",
             Authentication::ApiKey { .. } => "API Key",
+            Authentication::Digest { .. } => "Digest",
+            Authentication::AwsSigV4 { .. } => "AWS Signature v4",
+            Authentication::OAuth2 { .. } => "OAuth 2.0",
         }
+    }
+
+    /// Whether this scheme needs work at send time instead of a fixed header.
+    pub fn is_negotiated(&self) -> bool {
+        matches!(
+            self,
+            Authentication::Digest { .. }
+                | Authentication::AwsSigV4 { .. }
+                | Authentication::OAuth2 { .. }
+        )
     }
 
     /// A short description for the request summary line, with no secret material.
@@ -356,6 +425,19 @@ impl Authentication {
                     ApiKeyLocation::Query => "query",
                 };
                 format!("API key '{key}' in {where_}")
+            }
+            Authentication::Digest { username, .. } => {
+                if username.is_empty() {
+                    "Digest auth (no username)".to_string()
+                } else {
+                    format!("Digest auth as {username}")
+                }
+            }
+            Authentication::AwsSigV4 {
+                region, service, ..
+            } => format!("AWS Signature v4 ({service} in {region})"),
+            Authentication::OAuth2 { grant, .. } => {
+                format!("OAuth 2.0 ({})", grant.label().to_lowercase())
             }
         }
     }
@@ -391,6 +473,62 @@ impl Authentication {
                     issues.push(ValidationIssue::new(
                         RequestField::Authentication,
                         "API key auth requires a value",
+                    ));
+                }
+            }
+            Authentication::Digest { username, .. } => {
+                if username.trim().is_empty() {
+                    issues.push(ValidationIssue::new(
+                        RequestField::Authentication,
+                        "Digest auth requires a username",
+                    ));
+                }
+            }
+            Authentication::AwsSigV4 {
+                access_key,
+                secret_key,
+                region,
+                service,
+                ..
+            } => {
+                let required = [
+                    (access_key.as_str(), "an access key id"),
+                    (secret_key.as_str(), "a secret access key"),
+                    (region.as_str(), "a region"),
+                    (service.as_str(), "a service name"),
+                ];
+                for (value, what) in required {
+                    if value.trim().is_empty() {
+                        issues.push(ValidationIssue::new(
+                            RequestField::Authentication,
+                            format!("AWS Signature v4 requires {what}"),
+                        ));
+                    }
+                }
+            }
+            Authentication::OAuth2 {
+                grant,
+                token_url,
+                client_id,
+                username,
+                ..
+            } => {
+                if token_url.trim().is_empty() {
+                    issues.push(ValidationIssue::new(
+                        RequestField::Authentication,
+                        "OAuth 2.0 requires a token URL",
+                    ));
+                }
+                if client_id.trim().is_empty() {
+                    issues.push(ValidationIssue::new(
+                        RequestField::Authentication,
+                        "OAuth 2.0 requires a client id",
+                    ));
+                }
+                if *grant == OAuth2Grant::Password && username.trim().is_empty() {
+                    issues.push(ValidationIssue::new(
+                        RequestField::Authentication,
+                        "The password grant requires a username",
                     ));
                 }
             }

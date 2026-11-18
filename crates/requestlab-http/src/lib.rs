@@ -5,13 +5,17 @@
 //! returns a fully captured [`HttpResponse`].
 
 pub mod authentication;
+pub mod aws_sigv4;
 pub mod builder;
 pub mod client;
+pub mod digest;
 pub mod errors;
+pub mod oauth2;
 pub mod response;
 pub mod timing;
 
-pub use builder::{prepare_request, PreparedRequest, ResolvedBody, SendOptions};
+pub use builder::{prepare_request, AuthPlan, PreparedRequest, ResolvedBody, SendOptions};
 pub use client::{cancellation_channel, Canceller, HttpClient, HttpConfig};
 pub use errors::HttpError;
+pub use oauth2::TokenCache;
 pub use timing::RequestTimer;

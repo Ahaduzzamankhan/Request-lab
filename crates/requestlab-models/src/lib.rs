@@ -8,6 +8,8 @@ pub mod common;
 pub mod curl;
 pub mod environment;
 pub mod history;
+pub mod inspector;
+pub mod postman;
 pub mod request;
 pub mod response;
 
@@ -23,9 +25,17 @@ pub use common::{
 pub use curl::CurlError;
 pub use environment::{Environment, EnvironmentVariable};
 pub use history::{HistoryEntry, HistoryQuery, HistoryStatusFilter};
+pub use inspector::{
+    available_views, body_preview, download_name, indent_markup, search, BodyPreview, BodyView,
+    SearchHit, SearchResult,
+};
+pub use postman::{
+    export as export_postman, export_warnings as postman_export_warnings, import as import_postman,
+    ImportedCollection, ImportedRequest, PostmanError,
+};
 pub use request::{
-    ApiKeyLocation, Authentication, HeaderEntry, HttpMethod, QueryParameter, Request, RequestBody,
-    RequestBodyKind,
+    ApiKeyLocation, Authentication, HeaderEntry, HttpMethod, OAuth2Grant, QueryParameter, Request,
+    RequestBody, RequestBodyKind,
 };
 pub use response::{
     classify_body, looks_like_text, BodyKind, Cookie, HttpResponse, ResponseBody, ResponseHeader,

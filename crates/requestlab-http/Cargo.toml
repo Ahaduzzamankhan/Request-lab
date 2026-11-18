@@ -7,6 +7,10 @@ license.workspace = true
 [dependencies]
 requestlab-models = { workspace = true }
 reqwest = { workspace = true }
+chrono = { workspace = true }
+sha2 = { workspace = true }
+hmac = "0.12"
+md-5 = "0.10"
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

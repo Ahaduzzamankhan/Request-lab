@@ -36,6 +36,9 @@ pub enum HttpError {
     #[error("Could not read the response body: {0}")]
     Body(String),
 
+    #[error("Authentication failed: {0}")]
+    Auth(String),
+
     #[error("Network error: {0}")]
     Network(String),
 }
@@ -91,6 +94,7 @@ impl HttpError {
             HttpError::Tls(_) => "TLS",
             HttpError::Cancelled => "Cancelled",
             HttpError::Body(_) => "Body",
+            HttpError::Auth(_) => "Auth",
             HttpError::Network(_) => "Network",
         }
     }

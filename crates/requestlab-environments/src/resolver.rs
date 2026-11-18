@@ -285,6 +285,118 @@ pub fn resolve_request(
             .unwrap_or_else(|| value.clone()),
             location: *location,
         },
+        Authentication::Digest { username, password } => Authentication::Digest {
+            username: push(
+                RequestField::Authentication,
+                resolve_text(username, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| username.clone()),
+            password: push(
+                RequestField::Authentication,
+                resolve_text(password, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| password.clone()),
+        },
+        Authentication::AwsSigV4 {
+            access_key,
+            secret_key,
+            region,
+            service,
+            session_token,
+        } => Authentication::AwsSigV4 {
+            access_key: push(
+                RequestField::Authentication,
+                resolve_text(access_key, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| access_key.clone()),
+            secret_key: push(
+                RequestField::Authentication,
+                resolve_text(secret_key, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| secret_key.clone()),
+            region: push(
+                RequestField::Authentication,
+                resolve_text(region, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| region.clone()),
+            service: push(
+                RequestField::Authentication,
+                resolve_text(service, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| service.clone()),
+            session_token: push(
+                RequestField::Authentication,
+                resolve_text(session_token, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| session_token.clone()),
+        },
+        Authentication::OAuth2 {
+            grant,
+            token_url,
+            client_id,
+            client_secret,
+            scope,
+            username,
+            password,
+        } => Authentication::OAuth2 {
+            grant: *grant,
+            token_url: push(
+                RequestField::Authentication,
+                resolve_text(token_url, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| token_url.clone()),
+            client_id: push(
+                RequestField::Authentication,
+                resolve_text(client_id, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| client_id.clone()),
+            client_secret: push(
+                RequestField::Authentication,
+                resolve_text(client_secret, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| client_secret.clone()),
+            scope: push(
+                RequestField::Authentication,
+                resolve_text(scope, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| scope.clone()),
+            username: push(
+                RequestField::Authentication,
+                resolve_text(username, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| username.clone()),
+            password: push(
+                RequestField::Authentication,
+                resolve_text(password, environment),
+                &mut problems,
+                &mut variables,
+            )
+            .unwrap_or_else(|| password.clone()),
+        },
         Authentication::None => Authentication::None,
     };
 

@@ -5774,10 +5774,14 @@ dependencies = [
 name = "requestlab-http"
 version = "0.1.3"
 dependencies = [
+ "chrono",
+ "hmac",
+ "md-5",
  "requestlab-models",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "thiserror 2.0.21",
  "tokio",
  "tracing",

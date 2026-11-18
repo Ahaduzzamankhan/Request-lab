@@ -42,32 +42,68 @@ from the editor and the CLI so a variant never overwrites the original.
 Acceptance: every new body type is sent by the engine and covered by an
 integration test against a local server; the CLI and GUI share the same builder.
 
-## Phase 4 — Authentication suite
+## Phase 4 — Authentication suite (done)
 
-Digest, OAuth 2.0 (authorization code + client credentials + password), OAuth 1.0
-where practical, AWS Signature v4, and custom auth headers, with credentials kept
-out of logs, history and exports. CLI flags mirror the GUI fields.
+Digest, OAuth 2.0 (client credentials + password), AWS Signature v4 and custom
+auth headers, with credentials kept out of logs, history and exports. CLI flags
+mirror the GUI fields.
 
-Acceptance: each flow is tested against a local server or a deterministic
-signature vector; secrets are redacted everywhere they could be printed.
+- `requestlab-http::digest` parses `WWW-Authenticate` challenges (MD5, MD5-sess,
+  SHA-256, SHA-256-sess, `qop=auth`) and computes the RFC 7616 response; the
+  client sends the unauthenticated request, then repeats it once with the
+  computed header.
+- `requestlab-http::aws_sigv4` signs method, canonical URI/query, host, payload
+  hash and session token, and was checked against an independently computed
+  HMAC vector.
+- `requestlab-http::oauth2` fetches tokens for the client-credentials and
+  password grants, caches them in memory until shortly before expiry, and
+  reports `error`/`error_description` without echoing secrets.
+- CLI: `--digest`, `--aws-sigv4` (+ `--aws-session-token`), `--oauth2` with
+  `--client-id`, `--client-secret`, `--scope`, `--oauth2-grant`,
+  `--oauth2-user`, `--oauth2-password`.
+- The editor exposes Digest as a first-class auth choice and preserves AWS /
+  OAuth 2.0 configuration when editing other tabs.
 
-## Phase 5 — Response inspector
+Acceptance met: Digest retry and refusal, OAuth 2.0 fetch/reuse/rejection and
+SigV4 headers are covered by tests against a local HTTP server
+(`crates/requestlab-http/tests/auth.rs`), and the Digest/AWS algorithms have unit
+vectors. **Not implemented:** the interactive authorization-code flow (needs a
+browser and a redirect listener) and OAuth 1.0; both are reported rather than
+stubbed.
+
+## Phase 5 — Response inspector (partial)
 
 Pretty/raw/HTML/XML/text/binary views, collapsible JSON tree, in-response search,
 syntax highlighting, download and copy, cookies, headers, timing, and the
 test-results tab. Large responses stay bounded and off the UI thread.
 
-Acceptance: headless tests render each content type; a 10 MB JSON body does not
-block the UI or exceed the documented memory bound.
+Shipped in `requestlab-models::inspector`: per-content-type view lists, bounded
+body previews (JSON pretty, XML/HTML indentation, binary descriptions), literal
+in-response search with line/column/previews and a cap, and download filenames
+that honour `Content-Disposition` without allowing path escapes. Tests cover
+invalid JSON, binary bodies and a 2 MB body being cut instead of formatted.
 
-## Phase 6 — Collections, workspaces and variables
+**Still missing:** the GUI surface for the new views and search box (the existing
+panel keeps its Pretty/Raw tabs), syntax highlighting, and the test-results tab.
+
+## Phase 6 — Collections, workspaces and variables (partial)
 
 Workspaces, collection descriptions, drag-and-drop ordering, collection-level
 auth and variables, local/global/environment variables with autocomplete,
 import/export of RequestLab and Postman formats, and a collection runner.
 
-Acceptance: SQLite migrations preserve existing data; a mixed Postman import
-round-trips; every variable scope resolves in URL, headers, body and auth.
+Shipped: `requestlab-environments::scopes` resolves global, collection,
+environment and local values with Postman's precedence, falls back when a
+higher-scope definition is disabled, and feeds both resolution and `{{`
+completion with deduplicated names. `requestlab-models::postman` imports and
+exports Postman v2.1 collections (folders, queries, headers, raw/JSON/form
+bodies, basic/bearer/apikey/digest auth, collection variables) and reports the
+schemes Postman cannot represent instead of dropping them; export → import
+round-trips in tests.
+
+**Still missing:** database-backed workspaces and collection-level
+variables/auth (needs a migration), drag-and-drop reordering in the sidebar, and
+the collection runner.
 
 ## Phase 7 — Scripts, tests and automation
 

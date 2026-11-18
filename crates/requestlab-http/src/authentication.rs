@@ -81,6 +81,12 @@ pub fn apply(auth: &Authentication) -> AppliedAuth {
                 },
             }
         }
+        // Negotiated schemes are applied by the client at send time: Digest
+        // needs the server's challenge, OAuth 2.0 needs a token, and SigV4
+        // signs the exact bytes that go on the wire.
+        Authentication::Digest { .. }
+        | Authentication::AwsSigV4 { .. }
+        | Authentication::OAuth2 { .. } => AppliedAuth::default(),
     }
 }
 

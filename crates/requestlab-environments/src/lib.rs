@@ -7,9 +7,11 @@
 pub mod errors;
 pub mod manager;
 pub mod resolver;
+pub mod scopes;
 pub mod validation;
 
 pub use errors::{EnvironmentError, ResolutionError};
 pub use manager::EnvironmentService;
 pub use resolver::{resolve_request, resolve_text, Resolution, ResolvedRequest};
+pub use scopes::{ScopedValue, VariableScope, VariableScopes};
 pub use validation::validate_variables;

@@ -7,8 +7,8 @@
 use std::time::Duration;
 
 use requestlab_models::{
-    is_sensitive_header, normalize_url, validate_url, HttpMethod, Request, RequestBody,
-    ValidationIssue,
+    is_sensitive_header, normalize_url, validate_url, Authentication, HttpMethod, Request,
+    RequestBody, ValidationIssue,
 };
 use url::form_urlencoded;
 
@@ -64,6 +64,21 @@ impl ResolvedBody {
     }
 }
 
+/// Authentication that cannot be reduced to a fixed header at prepare time.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthPlan {
+    None,
+    /// Retry the request with a computed header after a 401 challenge.
+    Digest {
+        username: String,
+        password: String,
+    },
+    /// Sign every request with AWS Signature Version 4.
+    AwsSigV4(crate::aws_sigv4::AwsCredentials),
+    /// Fetch (or reuse) a token from the token endpoint.
+    OAuth2(requestlab_models::Authentication),
+}
+
 /// A request that is fully resolved and ready for `HttpClient::execute`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedRequest {
@@ -74,6 +89,7 @@ pub struct PreparedRequest {
     pub body: Option<ResolvedBody>,
     pub timeout: Duration,
     pub follow_redirects: bool,
+    pub auth: AuthPlan,
 }
 
 impl PreparedRequest {
@@ -249,6 +265,28 @@ pub fn prepare_request(
         _ => body,
     };
 
+    let auth = match &request.authentication {
+        Authentication::Digest { username, password } => AuthPlan::Digest {
+            username: username.clone(),
+            password: password.clone(),
+        },
+        Authentication::AwsSigV4 {
+            access_key,
+            secret_key,
+            region,
+            service,
+            session_token,
+        } => AuthPlan::AwsSigV4(crate::aws_sigv4::AwsCredentials {
+            access_key: access_key.clone(),
+            secret_key: secret_key.clone(),
+            region: region.clone(),
+            service: service.clone(),
+            session_token: session_token.clone(),
+        }),
+        Authentication::OAuth2 { .. } => AuthPlan::OAuth2(request.authentication.clone()),
+        _ => AuthPlan::None,
+    };
+
     Ok(PreparedRequest {
         method: request.method,
         url: url.to_string(),
@@ -256,6 +294,7 @@ pub fn prepare_request(
         body,
         timeout: options.timeout,
         follow_redirects: options.follow_redirects,
+        auth,
     })
 }
 

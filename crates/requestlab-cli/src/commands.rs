@@ -85,7 +85,7 @@ async fn execute(
             "requestlab-cli {}",
             crate::VERSION
         ))),
-        Command::Send(options) => send(&service, json, options).await,
+        Command::Send(options) => send(&service, json, *options).await,
         Command::Curl { command } => curl_preview(json, &command),
         Command::CollectionsList => {
             let trees = service
@@ -364,6 +364,12 @@ fn curl_preview(json: bool, command: &str) -> Result<CommandOutput, CliError> {
         for header in &request.headers {
             lines.push(format!("{}: {}", header.key, header.value));
         }
+        if !matches!(
+            request.authentication,
+            requestlab_models::Authentication::None
+        ) {
+            lines.push(format!("auth: {}", request.authentication.describe()));
+        }
         match &request.body {
             requestlab_models::RequestBody::None => {}
             requestlab_models::RequestBody::Json { content }
@@ -377,6 +383,9 @@ fn curl_preview(json: bool, command: &str) -> Result<CommandOutput, CliError> {
                     lines.push(format!("{}={}", field.key, field.value));
                 }
             }
+        }
+        for warning in requestlab_models::curl::render_warnings(&request) {
+            lines.push(format!("warning: {warning}"));
         }
         lines.join("\n")
     };
@@ -436,6 +445,39 @@ async fn send(
                 ApiKeyLocation::Header => ApiKeyLocation::Header,
                 ApiKeyLocation::Query => ApiKeyLocation::Query,
             },
+        },
+        Some(CliAuth::Digest { username, password }) => {
+            Authentication::Digest { username, password }
+        }
+        Some(CliAuth::AwsSigV4 {
+            access_key,
+            secret_key,
+            region,
+            service,
+            session_token,
+        }) => Authentication::AwsSigV4 {
+            access_key,
+            secret_key,
+            region,
+            service,
+            session_token,
+        },
+        Some(CliAuth::OAuth2 {
+            grant,
+            token_url,
+            client_id,
+            client_secret,
+            scope,
+            username,
+            password,
+        }) => Authentication::OAuth2 {
+            grant,
+            token_url,
+            client_id,
+            client_secret,
+            scope,
+            username,
+            password,
         },
     };
 

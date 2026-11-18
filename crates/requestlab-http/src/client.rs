@@ -1,12 +1,15 @@
 //! Async HTTP client built on Reqwest with Rustls.
 
+use std::sync::Arc;
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use requestlab_models::{HttpMethod, HttpResponse};
 use tokio::sync::oneshot;
 
-use crate::builder::PreparedRequest;
+use crate::builder::{AuthPlan, PreparedRequest, ResolvedBody};
 use crate::errors::HttpError;
+use crate::oauth2::TokenCache;
 use crate::response;
 use crate::timing::RequestTimer;
 
@@ -75,6 +78,7 @@ pub struct HttpClient {
     client: reqwest::Client,
     direct_client: reqwest::Client,
     config: HttpConfig,
+    tokens: Arc<TokenCache>,
 }
 
 impl HttpClient {
@@ -102,7 +106,13 @@ impl HttpClient {
             client,
             direct_client,
             config,
+            tokens: Arc::new(TokenCache::new()),
         })
+    }
+
+    /// Shared OAuth 2.0 token cache.
+    pub fn tokens(&self) -> &TokenCache {
+        &self.tokens
     }
 
     pub fn config(&self) -> &HttpConfig {
@@ -125,16 +135,88 @@ impl HttpClient {
             prepared.timeout
         };
         let max_bytes = self.config.max_response_bytes;
-
-        let request = self.build_request(prepared, timeout)?;
         let started = timer.started_at();
-        tracing::debug!(target = %prepared.log_target(), "sending request");
+        let log_target = prepared.log_target();
+        tracing::debug!(target = %log_target, "sending request");
 
         let exchange = async move {
-            match request.send().await {
-                Ok(resp) => response::capture(resp, max_bytes, started).await,
-                Err(err) => Err(HttpError::from_reqwest(err)),
+            // Authentication that depends on the server or on a live token is
+            // resolved here, right before the bytes go out.
+            let mut headers = prepared.headers.clone();
+            match &prepared.auth {
+                AuthPlan::OAuth2(auth) => {
+                    let token = self.tokens.access_token(&self.client, auth, false).await?;
+                    headers.retain(|(name, _)| !name.eq_ignore_ascii_case("authorization"));
+                    headers.push(("Authorization".to_string(), format!("Bearer {token}")));
+                }
+                AuthPlan::AwsSigV4(credentials) => {
+                    let url = url::Url::parse(&prepared.url)
+                        .map_err(|err| HttpError::InvalidUrl(err.to_string()))?;
+                    let body = prepared
+                        .body
+                        .as_ref()
+                        .map(ResolvedBody::bytes)
+                        .unwrap_or_default();
+                    let signed = crate::aws_sigv4::sign(
+                        prepared.method.as_str(),
+                        &url,
+                        &body,
+                        credentials,
+                        chrono::Utc::now(),
+                    );
+                    headers.retain(|(name, _)| {
+                        !signed
+                            .headers
+                            .iter()
+                            .any(|(signed_name, _)| signed_name.eq_ignore_ascii_case(name))
+                    });
+                    headers.extend(signed.headers);
+                }
+                _ => {}
             }
+
+            let request = self.build_request(prepared, timeout, &headers)?;
+            let response = match request.send().await {
+                Ok(response) => response,
+                Err(err) => return Err(HttpError::from_reqwest(err)),
+            };
+
+            // Digest: the first attempt is unauthenticated by design. A 401 with
+            // a Digest challenge is answered by repeating the request once with
+            // the computed header.
+            if let AuthPlan::Digest { username, password } = &prepared.auth {
+                if response.status().as_u16() == 401 {
+                    let challenge = response
+                        .headers()
+                        .get_all(reqwest::header::WWW_AUTHENTICATE)
+                        .iter()
+                        .filter_map(|value| value.to_str().ok())
+                        .find_map(crate::digest::DigestChallenge::parse);
+                    if let Some(challenge) = challenge {
+                        let target = request_target(&prepared.url);
+                        let cnonce = nonce();
+                        if let Some(value) = crate::digest::authorization_header(
+                            &challenge,
+                            username,
+                            password,
+                            prepared.method.as_str(),
+                            &target,
+                            &cnonce,
+                            1,
+                        ) {
+                            let mut retry_headers = headers.clone();
+                            retry_headers
+                                .retain(|(name, _)| !name.eq_ignore_ascii_case("authorization"));
+                            retry_headers.push(("Authorization".to_string(), value));
+                            let retry = self.build_request(prepared, timeout, &retry_headers)?;
+                            let response = retry.send().await.map_err(HttpError::from_reqwest)?;
+                            return response::capture(response, max_bytes, started).await;
+                        }
+                    }
+                }
+            }
+
+            response::capture(response, max_bytes, started).await
         };
 
         let outcome = tokio::select! {
@@ -147,7 +229,7 @@ impl HttpClient {
         outcome.map_err(|err| {
             let err = err.with_timeout_ms(elapsed);
             if !err.is_cancelled() {
-                tracing::warn!(target = %prepared.log_target(), category = err.category(), "request failed: {}", err);
+                tracing::warn!(target = %log_target, category = err.category(), "request failed: {}", err);
             }
             err
         })
@@ -157,6 +239,7 @@ impl HttpClient {
         &self,
         prepared: &PreparedRequest,
         timeout: Duration,
+        headers: &[(String, String)],
     ) -> Result<reqwest::RequestBuilder, HttpError> {
         let method = match prepared.method {
             HttpMethod::Get => reqwest::Method::GET,
@@ -175,7 +258,7 @@ impl HttpClient {
         };
         let mut builder = client.request(method, &prepared.url).timeout(timeout);
 
-        for (name, value) in &prepared.headers {
+        for (name, value) in headers {
             builder = builder.header(name, value);
         }
 
@@ -185,6 +268,33 @@ impl HttpClient {
 
         Ok(builder)
     }
+}
+
+/// Path plus query, the `uri` a Digest header must cover.
+fn request_target(raw_url: &str) -> String {
+    match url::Url::parse(raw_url) {
+        Ok(url) => {
+            let mut target = url.path().to_string();
+            if let Some(query) = url.query() {
+                target.push('?');
+                target.push_str(query);
+            }
+            target
+        }
+        Err(_) => raw_url.to_string(),
+    }
+}
+
+/// A per-request client nonce for Digest. Not a secret: it only has to be
+/// unique per request, so process time plus a counter is enough.
+fn nonce() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_nanos() as u64)
+        .unwrap_or(0);
+    format!("{:016x}", nanos ^ COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
 #[cfg(test)]

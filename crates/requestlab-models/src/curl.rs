@@ -135,6 +135,7 @@ pub fn parse(input: &str) -> Result<Request, CurlError> {
     let mut form_fields: Vec<QueryParameter> = Vec::new();
     let mut as_query = false;
     let mut method_set = false;
+    let mut digest_requested = false;
 
     while let Some(token) = tokens.next() {
         let mut value = |flag: &str| -> Result<String, CurlError> {
@@ -239,6 +240,7 @@ pub fn parse(input: &str) -> Result<Request, CurlError> {
                     password: String::new(),
                 };
             }
+            "--digest" => digest_requested = true,
             other if other.starts_with('-') => {
                 return Err(CurlError::new(format!(
                     "the curl option '{other}' is not supported; nothing was imported"
@@ -256,6 +258,16 @@ pub fn parse(input: &str) -> Result<Request, CurlError> {
 
     if request.url.trim().is_empty() {
         return Err(CurlError::new("the command has no URL"));
+    }
+
+    // `--digest --user user:pass` is Digest auth; `--user` alone stays Basic.
+    if digest_requested {
+        request.authentication = match request.authentication {
+            Authentication::Basic { username, password } => {
+                Authentication::Digest { username, password }
+            }
+            other => other,
+        };
     }
 
     // An Authorization header carries the same meaning as the auth fields, so a
@@ -367,6 +379,27 @@ pub fn full_url(request: &Request) -> String {
 }
 
 /// Render a request as a cURL command.
+/// Authentication that [`render`] cannot express as cURL options.
+///
+/// Rendering is lossy for schemes that need a live token or a signature, and
+/// callers are expected to surface these strings instead of dropping them.
+pub fn render_warnings(request: &Request) -> Vec<&'static str> {
+    let mut warnings = Vec::new();
+    match &request.authentication {
+        Authentication::AwsSigV4 { .. } => {
+            warnings.push("AWS Signature v4 credentials are not part of a cURL command");
+        }
+        Authentication::OAuth2 { .. } => {
+            warnings.push("OAuth 2.0 settings are not part of a cURL command");
+        }
+        _ => {}
+    }
+    if matches!(request.body, RequestBody::FormUrlEncoded { .. }) {
+        // Rendered as --data-urlencode rows, which is exact only for text values.
+    }
+    warnings
+}
+
 pub fn render(request: &Request) -> String {
     let mut parts = vec!["curl".to_string()];
     if request.method != HttpMethod::Get {
@@ -393,6 +426,16 @@ pub fn render(request: &Request) -> String {
             "--header {}",
             quote(&format!("Authorization: Bearer {token}"))
         )),
+        Authentication::Digest { username, password } => {
+            parts.push("--digest".to_string());
+            parts.push(format!(
+                "--user {}",
+                quote(&format!("{username}:{password}"))
+            ));
+        }
+        // AWS SigV4 and OAuth 2.0 are negotiated at send time and have no cURL
+        // spelling here; `render_warnings` reports the omission to the caller.
+        Authentication::AwsSigV4 { .. } | Authentication::OAuth2 { .. } => {}
         Authentication::ApiKey {
             key,
             value,
@@ -519,8 +562,31 @@ mod tests {
 
     #[test]
     fn refuses_unsupported_options() {
-        let error = parse("curl --digest -u a:b https://api.example.com").unwrap_err();
-        assert!(error.message().contains("--digest"), "{error}");
+        let error = parse("curl --ntlm -u a:b https://api.example.com").unwrap_err();
+        assert!(error.message().contains("--ntlm"), "{error}");
+    }
+
+    #[test]
+    fn digest_credentials_round_trip() {
+        let request = parse("curl --digest -u ada:secret https://api.example.com").unwrap();
+        assert_eq!(
+            request.authentication,
+            Authentication::Digest {
+                username: "ada".into(),
+                password: "secret".into()
+            }
+        );
+        let rendered = render(&request);
+        assert!(rendered.contains("--digest"), "{rendered}");
+        assert!(rendered.contains("ada:secret"), "{rendered}");
+        assert_eq!(
+            parse(&rendered).unwrap().authentication,
+            request.authentication
+        );
+
+        // Without --digest, -u stays Basic.
+        let basic = parse("curl -u ada:secret https://api.example.com").unwrap();
+        assert!(matches!(basic.authentication, Authentication::Basic { .. }));
     }
 
     #[test]

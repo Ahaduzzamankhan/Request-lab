@@ -47,14 +47,19 @@ pub enum AuthKind {
     Basic,
     Bearer,
     ApiKey,
+    Digest,
+    /// AWS SigV4 and OAuth 2.0 are edited through their own fields; the editor
+    /// keeps the original configuration so switching tabs never drops it.
+    External,
 }
 
 impl AuthKind {
-    pub const ALL: [AuthKind; 4] = [
+    pub const ALL: [AuthKind; 5] = [
         AuthKind::None,
         AuthKind::Basic,
         AuthKind::Bearer,
         AuthKind::ApiKey,
+        AuthKind::Digest,
     ];
 
     pub fn label(self) -> &'static str {
@@ -63,6 +68,8 @@ impl AuthKind {
             AuthKind::Basic => "Basic",
             AuthKind::Bearer => "Bearer",
             AuthKind::ApiKey => "API Key",
+            AuthKind::Digest => "Digest",
+            AuthKind::External => "Configured elsewhere",
         }
     }
 
@@ -72,6 +79,8 @@ impl AuthKind {
             Authentication::Basic { .. } => AuthKind::Basic,
             Authentication::Bearer { .. } => AuthKind::Bearer,
             Authentication::ApiKey { .. } => AuthKind::ApiKey,
+            Authentication::Digest { .. } => AuthKind::Digest,
+            Authentication::AwsSigV4 { .. } | Authentication::OAuth2 { .. } => AuthKind::External,
         }
     }
 
@@ -82,6 +91,8 @@ impl AuthKind {
             AuthKind::Basic => "Username",
             AuthKind::Bearer => "Token",
             AuthKind::ApiKey => "Key",
+            AuthKind::Digest => "Username",
+            AuthKind::External => "",
         }
     }
 
@@ -92,6 +103,8 @@ impl AuthKind {
             AuthKind::Basic => "Password",
             AuthKind::Bearer => "",
             AuthKind::ApiKey => "Value",
+            AuthKind::Digest => "Password",
+            AuthKind::External => "",
         }
     }
 }
@@ -164,6 +177,9 @@ pub struct RequestEditor {
     pub auth_kind: AuthKind,
     pub auth_primary: Entity<TextInput>,
     pub auth_secondary: Entity<TextInput>,
+    /// The request's authentication as loaded, kept so a scheme the editor does
+    /// not expose (AWS SigV4, OAuth 2.0) survives edits to the other tabs.
+    pub preserved_auth: Authentication,
     pub api_key_location: ApiKeyLocation,
     pub saved: Option<SavedLocation>,
 }
@@ -197,6 +213,7 @@ impl RequestEditor {
             auth_kind: AuthKind::None,
             auth_primary,
             auth_secondary,
+            preserved_auth: Authentication::None,
             api_key_location: ApiKeyLocation::Header,
             saved: None,
         }
@@ -269,6 +286,7 @@ impl RequestEditor {
         }
 
         self.auth_kind = AuthKind::from_authentication(&request.authentication);
+        self.preserved_auth = request.authentication.clone();
         match &request.authentication {
             Authentication::None => {
                 self.auth_primary.update(cx, |i, _| i.set_content(""));
@@ -296,6 +314,14 @@ impl RequestEditor {
                     .update(cx, |i, _| i.set_content(value.clone()));
                 self.api_key_location = *location;
             }
+            Authentication::Digest { username, password } => {
+                self.auth_primary
+                    .update(cx, |i, _| i.set_content(username.clone()));
+                self.auth_secondary
+                    .update(cx, |i, _| i.set_content(password.clone()));
+            }
+            // Edited in their own panels; the fields above stay untouched.
+            Authentication::AwsSigV4 { .. } | Authentication::OAuth2 { .. } => {}
         }
     }
 
@@ -374,6 +400,11 @@ impl RequestEditor {
                 value: secondary,
                 location: self.api_key_location,
             },
+            AuthKind::Digest => Authentication::Digest {
+                username: primary,
+                password: secondary,
+            },
+            AuthKind::External => self.preserved_auth.clone(),
         };
 
         request
